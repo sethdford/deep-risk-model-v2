@@ -166,10 +166,10 @@ mod tests {
 }
 
 // Use the build script's configuration flags for conditional compilation
-#[cfg(not(feature = "no_blas"))]
+#[cfg(not(feature = "no-blas"))]
 pub use ndarray_linalg;
 
-#[cfg(feature = "no_blas")]
+#[cfg(feature = "no-blas")]
 pub mod fallback {
     //! Fallback implementations for when BLAS is not available
     use ndarray::{Array2, ArrayBase, Data, Ix2};
