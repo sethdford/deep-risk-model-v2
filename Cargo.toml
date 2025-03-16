@@ -105,6 +105,11 @@ accelerate.ndarray-linalg = ["accelerate"]
 # GPU feature - placeholder for future GPU support
 gpu = []  # Will include CUDA dependencies when they are properly implemented
 
+# Ensure tests always use BLAS
+[dev-dependencies.deep_risk_model]
+path = "."
+features = ["blas"]
+
 [dev-dependencies]
 # Async testing
 tokio-test = "0.4"
