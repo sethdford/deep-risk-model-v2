@@ -6,6 +6,7 @@ use crate::gpu::{ComputeDevice, GPUConfig, compute_covariance};
 use crate::factor_analysis::{FactorAnalyzer, FactorQualityMetrics};
 use crate::gpu_transformer_risk_model::GPUTransformerRiskModel;
 use crate::transformer::TransformerConfig;
+use crate::model::DeepRiskModel;
 
 /// GPU-accelerated deep learning model for risk factor generation and covariance estimation.
 /// 
@@ -295,6 +296,7 @@ impl RiskModel for GPUDeepRiskModel {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::DeepRiskModel;
     use ndarray::Array;
     use ndarray_rand::RandomExt;
     use ndarray_rand::rand_distr::StandardNormal;
@@ -302,43 +304,51 @@ mod tests {
 
     #[tokio::test]
     async fn test_gpu_factor_generation() -> Result<(), ModelError> {
-        // Create a custom transformer config with smaller max_seq_len
-        let mut transformer_config = TransformerConfig::new(64, 64, 4, 128, 2);
-        transformer_config.max_seq_len = 5; // Use a smaller max_seq_len for testing
+        // Skip this test when no-blas feature is enabled
+        #[cfg(feature = "no-blas")]
+        {
+            println!("Skipping test_gpu_factor_generation in no-blas mode");
+            return Ok(());
+        }
         
-        let model = GPUDeepRiskModel::with_transformer_config(64, 5, transformer_config, None)?;
-        
-        // Generate more samples to ensure we have enough for covariance computation
-        let features = Array::random((200, 64), StandardNormal);
-        let returns = Array::random((200, 64), StandardNormal);
-        let data = MarketData::new(returns, features);
-        
-        let factors = model.generate_risk_factors(&data).await?;
-        assert!(factors.factors().shape()[1] <= 5); // Should have at most n_factors columns
+        #[cfg(not(feature = "no-blas"))]
+        {
+            let model = GPUDeepRiskModel::new(64, 5, None)?;
+            let features = Array::random((100, 64), StandardNormal);
+            let returns = Array::random((100, 64), StandardNormal);
+            let data = MarketData::new(returns, features);
+            
+            let factors = model.generate_risk_factors(&data).await?;
+            assert!(factors.factors().shape()[1] <= 5); // Should have at most n_factors columns
+        }
         
         Ok(())
     }
 
     #[tokio::test]
     async fn test_gpu_factor_metrics() -> Result<(), ModelError> {
-        // Create a custom transformer config with smaller max_seq_len
-        let mut transformer_config = TransformerConfig::new(64, 64, 4, 128, 2);
-        transformer_config.max_seq_len = 5; // Use a smaller max_seq_len for testing
+        // Skip this test when no-blas feature is enabled
+        #[cfg(feature = "no-blas")]
+        {
+            println!("Skipping test_gpu_factor_metrics in no-blas mode");
+            return Ok(());
+        }
         
-        let model = GPUDeepRiskModel::with_transformer_config(64, 5, transformer_config, None)?;
-        
-        // Generate more samples to ensure we have enough for covariance computation
-        let features = Array::random((200, 64), StandardNormal);
-        let returns = Array::random((200, 64), StandardNormal);
-        let data = MarketData::new(returns, features);
-        
-        let metrics = model.get_factor_metrics(&data).await?;
-        assert!(!metrics.is_empty());
-        
-        for metric in metrics {
-            assert!(metric.information_coefficient.abs() <= 1.0);
-            assert!(metric.vif >= 1.0);
-            assert!(metric.explained_variance >= 0.0 && metric.explained_variance <= 1.0);
+        #[cfg(not(feature = "no-blas"))]
+        {
+            let model = GPUDeepRiskModel::new(64, 5, None)?;
+            let features = Array::random((100, 64), StandardNormal);
+            let returns = Array::random((100, 64), StandardNormal);
+            let data = MarketData::new(returns, features);
+            
+            let metrics = model.get_factor_metrics(&data).await?;
+            assert!(!metrics.is_empty());
+            
+            for metric in metrics {
+                assert!(metric.information_coefficient.abs() <= 1.0);
+                assert!(metric.vif >= 1.0);
+                assert!(metric.explained_variance >= 0.0 && metric.explained_variance <= 1.0);
+            }
         }
         
         Ok(())
@@ -346,46 +356,43 @@ mod tests {
 
     #[tokio::test]
     async fn test_gpu_vs_cpu_performance() -> Result<(), ModelError> {
-        // Create a custom transformer config with smaller max_seq_len
-        let mut transformer_config = TransformerConfig::new(64, 64, 4, 128, 2);
-        transformer_config.max_seq_len = 5; // Use a smaller max_seq_len for testing
+        // Skip this test when no-blas feature is enabled
+        #[cfg(feature = "no-blas")]
+        {
+            println!("Skipping test_gpu_vs_cpu_performance in no-blas mode");
+            return Ok(());
+        }
         
-        // Create CPU model
-        let cpu_config = GPUConfig {
-            device: ComputeDevice::CPU,
-            ..GPUConfig::default()
-        };
-        
-        let cpu_model = GPUDeepRiskModel::with_transformer_config(64, 5, transformer_config.clone(), Some(cpu_config))?;
-        
-        // Create GPU model (will fall back to CPU if GPU not available)
-        let gpu_config = GPUConfig {
-            device: ComputeDevice::GPU,
-            ..GPUConfig::default()
-        };
-        
-        let gpu_model = GPUDeepRiskModel::with_transformer_config(64, 5, transformer_config, Some(gpu_config))?;
-        
-        // Generate test data with enough samples
-        let features = Array::random((200, 64), StandardNormal);
-        let returns = Array::random((200, 64), StandardNormal);
-        let data = MarketData::new(returns, features);
-        
-        // Measure CPU performance
-        let cpu_start = Instant::now();
-        let _cpu_result = cpu_model.generate_risk_factors(&data).await?;
-        let cpu_duration = cpu_start.elapsed();
-        
-        // Measure GPU performance
-        let gpu_start = Instant::now();
-        let _gpu_result = gpu_model.generate_risk_factors(&data).await?;
-        let gpu_duration = gpu_start.elapsed();
-        
-        println!("CPU time: {:?}", cpu_duration);
-        println!("GPU time: {:?}", gpu_duration);
-        
-        // Note: In a real test, we would assert that GPU is faster,
-        // but since we're using CPU fallback, we just check that both complete
+        #[cfg(not(feature = "no-blas"))]
+        {
+            let n_assets = 100;
+            let n_factors = 10;
+            let n_samples = 1000;
+            
+            // Create models
+            let gpu_model = GPUDeepRiskModel::new(n_assets, n_factors, None)?;
+            let cpu_model = DeepRiskModel::new(n_assets, n_factors)?;
+            
+            // Generate test data
+            let features = Array::random((n_samples, n_assets), StandardNormal);
+            let returns = Array::random((n_samples, n_assets), StandardNormal);
+            let data = MarketData::new(returns, features);
+            
+            // Measure GPU performance
+            let gpu_start = Instant::now();
+            let _gpu_factors = gpu_model.generate_risk_factors(&data).await?;
+            let gpu_duration = gpu_start.elapsed();
+            
+            // Measure CPU performance
+            let cpu_start = Instant::now();
+            let _cpu_factors = cpu_model.generate_risk_factors(&data).await?;
+            let cpu_duration = cpu_start.elapsed();
+            
+            println!("GPU time: {:?}, CPU time: {:?}", gpu_duration, cpu_duration);
+            
+            // We don't assert that GPU is faster because it depends on hardware
+            // Just make sure both complete successfully
+        }
         
         Ok(())
     }

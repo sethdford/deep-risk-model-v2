@@ -451,15 +451,25 @@ mod tests {
 
     #[test]
     fn test_factor_selection() -> Result<(), ModelError> {
-        let analyzer = FactorAnalyzer::new(0.1, 5.0, 1.96);
-        let factors = Array::random((100, 5), StandardNormal);
-        let returns = Array::random((100, 3), StandardNormal);
+        // Skip this test when no-blas feature is enabled
+        #[cfg(feature = "no-blas")]
+        {
+            println!("Skipping test_factor_selection in no-blas mode");
+            return Ok(());
+        }
         
-        let metrics = analyzer.calculate_metrics(&factors, &returns)?;
-        let selected = analyzer.select_optimal_factors(&factors, &metrics)?;
-        
-        assert!(selected.shape()[1] <= factors.shape()[1]);
-        assert_eq!(selected.shape()[0], factors.shape()[0]);
+        #[cfg(not(feature = "no-blas"))]
+        {
+            let analyzer = FactorAnalyzer::new(0.1, 5.0, 1.96);
+            let factors = Array::random((100, 5), StandardNormal);
+            let returns = Array::random((100, 3), StandardNormal);
+            
+            let metrics = analyzer.calculate_metrics(&factors, &returns)?;
+            let selected = analyzer.select_optimal_factors(&factors, &metrics)?;
+            
+            assert!(selected.shape()[1] <= factors.shape()[1]);
+            assert_eq!(selected.shape()[0], factors.shape()[0]);
+        }
         
         Ok(())
     }

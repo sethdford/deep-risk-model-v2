@@ -18,7 +18,7 @@
 //! These functions are automatically used when the `no-blas` feature is enabled
 //! and the BLAS features are disabled:
 //!
-//! ```
+//! ```bash
 //! cargo build --no-default-features --features no-blas
 //! ```
 
