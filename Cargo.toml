@@ -86,6 +86,7 @@ blas = [
     "dep:openblas-src", 
     "dep:cblas-sys"
 ]
+# When no-blas is enabled, ensure ndarray doesn't try to use BLAS
 no-blas = []
 
 # BLAS implementation features - all depend on the blas feature

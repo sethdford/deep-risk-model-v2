@@ -169,6 +169,17 @@ mod tests {
 #[cfg(not(feature = "no-blas"))]
 pub use ndarray_linalg;
 
+// Ensure we don't try to use BLAS when the no-blas feature is enabled
+#[cfg(feature = "no-blas")]
+pub mod ndarray_linalg {
+    // Empty module to satisfy imports when BLAS is not available
+    // This prevents "unresolved import" errors
+    pub mod error {
+        #[derive(Debug)]
+        pub struct LinalgError;
+    }
+}
+
 #[cfg(feature = "no-blas")]
 pub mod fallback {
     //! Fallback implementations for when BLAS is not available

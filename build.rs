@@ -6,9 +6,14 @@ fn main() {
         // If no-blas is enabled, we don't want to link against any BLAS libraries
         println!("cargo:rustc-cfg=feature=\"no-blas\"");
         println!("cargo:warning=Building without BLAS support");
+        
+        // Explicitly tell ndarray not to use BLAS
+        println!("cargo:rustc-cfg=not(feature=\"with-blas\")");
+        println!("cargo:rustc-cfg=not(feature=\"blas\")");
     } else {
         // If no-blas is not enabled, we want to link against BLAS libraries
         println!("cargo:rustc-cfg=feature=\"with_blas\"");
+        println!("cargo:rustc-cfg=feature=\"blas\"");
         
         // Check which BLAS implementation to use
         let openblas_system = std::env::var("CARGO_FEATURE_OPENBLAS_SYSTEM").is_ok();

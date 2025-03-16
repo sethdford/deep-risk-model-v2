@@ -90,9 +90,17 @@ jobs:
     - name: Build without BLAS
       if: matrix.blas == 'without-blas'
       run: |
+        # Ensure ndarray doesn't try to use BLAS
+        export CARGO_FEATURE_NO_BLAS=1
+        export RUSTFLAGS="-C target-feature=-crt-static"
         cargo build --verbose --no-default-features --features ${{ matrix.features }}
         # Build examples with the same features
         cargo build --verbose --no-default-features --features ${{ matrix.features }} --examples
+      env:
+        # Disable BLAS in ndarray
+        CARGO_FEATURE_NO_BLAS: 1
+        # Disable BLAS in other dependencies
+        NDARRAY_NO_BLAS: 1
     
     - name: Run tests with OpenBLAS
       if: matrix.blas == 'with-openblas'
@@ -104,4 +112,13 @@ jobs:
     
     - name: Run tests without BLAS
       if: matrix.blas == 'without-blas'
-      run: cargo test --verbose --no-default-features --features ${{ matrix.features }}
+      run: |
+        # Ensure ndarray doesn't try to use BLAS
+        export CARGO_FEATURE_NO_BLAS=1
+        export RUSTFLAGS="-C target-feature=-crt-static"
+        cargo test --verbose --no-default-features --features ${{ matrix.features }}
+      env:
+        # Disable BLAS in ndarray
+        CARGO_FEATURE_NO_BLAS: 1
+        # Disable BLAS in other dependencies
+        NDARRAY_NO_BLAS: 1
