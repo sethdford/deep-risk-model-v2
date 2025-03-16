@@ -1,6 +1,99 @@
 # Deep Risk Model
 
-A high-performance risk modeling system using transformer-based architecture and hardware-accelerated computations.
+A deep learning-based risk model for financial markets implemented in Rust.
+
+## Features
+
+- Deep Risk Model with transformer architecture
+- Temporal Fusion Transformer (TFT) for time series analysis
+- Factor Analysis for risk decomposition
+- Graph Attention Networks (GAT) for asset relationships
+- Gated Recurrent Units (GRU) for temporal dependencies
+- Market Regime Detection using Hidden Markov Models
+- Regime-Aware Risk Models for adaptive risk estimation
+- Backtesting framework for model evaluation
+- GPU acceleration for high-performance risk modeling
+- Quantization for model compression and inference acceleration
+
+## Building
+
+### BLAS Support
+
+This library uses BLAS for linear algebra operations. You can choose from several BLAS implementations:
+
+```bash
+# Build with OpenBLAS (default)
+cargo build --features openblas
+
+# Build with Netlib
+cargo build --features netlib
+
+# Build with Intel MKL
+cargo build --features intel-mkl
+
+# Build with Accelerate (macOS only)
+cargo build --features accelerate
+
+# Build without BLAS (pure Rust implementation)
+cargo build --no-default-features --features no-blas
+```
+
+Note: The pure Rust implementation has limited functionality and will fail for matrix operations on large matrices.
+
+### System Dependencies
+
+#### Ubuntu/Debian
+
+```bash
+sudo apt-get install -y libopenblas-dev liblapack-dev gfortran
+```
+
+#### macOS
+
+```bash
+brew install openblas
+```
+
+#### Windows
+
+For Windows, it's recommended to use the MSVC toolchain with vcpkg:
+
+```bash
+vcpkg install openblas:x64-windows
+```
+
+## Testing
+
+Run all tests with:
+
+```bash
+cargo test --features openblas
+```
+
+For tests that don't require BLAS:
+
+```bash
+cargo test --no-default-features --features no-blas -- --skip factor_analysis::tests::test_factor_selection --skip gpu_model::tests::test_gpu_factor_metrics --skip model::tests::test_factor_generation --skip model::tests::test_factor_metrics --skip model::tests::test_covariance_estimation --skip gpu_model::tests::test_gpu_factor_generation --skip gpu_model::tests::test_gpu_vs_cpu_performance
+```
+
+Or use the provided script:
+
+```bash
+./run_tests.sh
+```
+
+## Examples
+
+Run examples with:
+
+```bash
+cargo run --example quantization_example --features openblas
+cargo run --example memory_optimization_example --features openblas
+```
+
+## License
+
+MIT
 
 ## 🚀 Recent Improvements
 

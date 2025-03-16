@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  d_ff = {}", d_ff);
     println!("  n_layers = {}", n_layers);
     
-    let mut model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
+    let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
     
     // Generate synthetic market data
     let n_samples = 100;
@@ -88,6 +88,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Print summary
     println!("\nSummary:");
     println!("  Baseline accuracy (MSE): {:.6}", baseline_mse);
+    
+    // Print BLAS configuration
+    #[cfg(feature = "no-blas")]
+    println!("  Running without BLAS support (pure Rust implementation)");
+    
+    #[cfg(not(feature = "no-blas"))]
+    {
+        #[cfg(feature = "openblas")]
+        println!("  Running with OpenBLAS support");
+        
+        #[cfg(feature = "netlib")]
+        println!("  Running with Netlib support");
+        
+        #[cfg(feature = "intel-mkl")]
+        println!("  Running with Intel MKL support");
+        
+        #[cfg(feature = "accelerate")]
+        println!("  Running with Accelerate support");
+    }
     
     Ok(())
 } 

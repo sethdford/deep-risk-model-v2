@@ -118,6 +118,9 @@ mockito = "1.2"
 # Mocking
 mockall = "0.11"
 
+# BLAS dependencies for tests
+openblas-src = { version = "0.10", features = ["cblas"] }
+
 [[bin]]
 name = "bootstrap"
 path = "src/lambda.rs"

@@ -188,5 +188,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     println!("\nMemory Optimization Example Completed");
     
+    // Print BLAS configuration
+    #[cfg(feature = "no-blas")]
+    println!("\nRunning without BLAS support (pure Rust implementation)");
+    
+    #[cfg(not(feature = "no-blas"))]
+    {
+        #[cfg(feature = "openblas")]
+        println!("\nRunning with OpenBLAS support");
+        
+        #[cfg(feature = "netlib")]
+        println!("\nRunning with Netlib support");
+        
+        #[cfg(feature = "intel-mkl")]
+        println!("\nRunning with Intel MKL support");
+        
+        #[cfg(feature = "accelerate")]
+        println!("\nRunning with Accelerate support");
+    }
+    
     Ok(())
 } 
