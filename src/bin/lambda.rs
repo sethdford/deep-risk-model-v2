@@ -11,6 +11,7 @@ use ndarray::Array2;
 
 type SharedModel = Arc<Mutex<TransformerRiskModel>>;
 
+#[cfg(not(feature = "no-blas"))]
 async fn function_handler(event: Request, model: SharedModel) -> Result<Response<Body>, Error> {
     // Parse request body
     let body = event.body();
@@ -66,6 +67,21 @@ async fn function_handler(event: Request, model: SharedModel) -> Result<Response
     Ok(response)
 }
 
+#[cfg(feature = "no-blas")]
+async fn function_handler(event: Request, _model: SharedModel) -> Result<Response<Body>, Error> {
+    // In no-blas mode, return a message indicating that this functionality requires BLAS
+    let response = Response::builder()
+        .status(501)
+        .header("content-type", "application/json")
+        .body(json!({
+            "error": "This Lambda function requires BLAS support for matrix operations",
+            "message": "The no-blas feature is enabled, which disables advanced matrix operations required for risk factor generation",
+            "solution": "Please rebuild the Lambda function with BLAS support enabled"
+        }).to_string().into())?;
+    
+    Ok(response)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // Initialize model with appropriate parameters for TransformerRiskModel
@@ -73,7 +89,20 @@ async fn main() -> Result<(), Error> {
     let n_heads = 8;
     let d_ff = 256;
     let n_layers = 3;
+    
+    #[cfg(not(feature = "no-blas"))]
     let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
+    
+    #[cfg(feature = "no-blas")]
+    let model = {
+        // In no-blas mode, use a smaller configuration to avoid matrix inversion issues
+        let small_d_model = 6;
+        let small_n_heads = 1;
+        let small_d_ff = 8;
+        let small_n_layers = 1;
+        TransformerRiskModel::new(small_d_model, small_n_heads, small_d_ff, small_n_layers)?
+    };
+    
     let shared_model = Arc::new(Mutex::new(model));
     
     // Start lambda service

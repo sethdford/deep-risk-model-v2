@@ -3,6 +3,8 @@ use axum::{
     extract::State,
     Json,
     Router,
+    http::StatusCode,
+    response::{IntoResponse, Response},
 };
 use deep_risk_model::prelude::{
     MarketData,
@@ -28,12 +30,19 @@ struct RiskFactorsResponse {
     covariance: Vec<Vec<f32>>,
 }
 
+#[derive(Debug, Serialize)]
+struct ErrorResponse {
+    error: String,
+    message: String,
+}
+
 type SharedState = Arc<Mutex<DeepRiskModel>>;
 
 async fn health_check() -> &'static str {
     "OK"
 }
 
+#[cfg(not(feature = "no-blas"))]
 async fn generate_risk_factors(
     State(model): State<SharedState>,
     Json(request): Json<MarketDataRequest>,
@@ -76,13 +85,35 @@ async fn generate_risk_factors(
     Ok(Json(response))
 }
 
+#[cfg(feature = "no-blas")]
+async fn generate_risk_factors(
+    _state: State<SharedState>,
+    _request: Json<MarketDataRequest>,
+) -> impl IntoResponse {
+    let error_response = ErrorResponse {
+        error: "BLAS Support Required".to_string(),
+        message: "This endpoint requires BLAS support for matrix operations. The server is running in no-blas mode.".to_string(),
+    };
+    
+    (StatusCode::NOT_IMPLEMENTED, Json(error_response))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
     
-    // Initialize model
+    // Initialize model with appropriate parameters
+    #[cfg(not(feature = "no-blas"))]
     let model = DeepRiskModel::new(100, 10)?;
+    
+    #[cfg(feature = "no-blas")]
+    let model = {
+        // In no-blas mode, use a smaller configuration to avoid matrix inversion issues
+        info!("Running in no-blas mode with limited functionality");
+        DeepRiskModel::new(10, 2)?
+    };
+    
     let shared_state = Arc::new(Mutex::new(model));
     
     // Configure CORS

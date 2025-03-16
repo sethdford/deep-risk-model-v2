@@ -37,17 +37,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let d_ff = 256;
     let n_layers = 3;
     
-    let features = Array::random((n_samples, n_assets), Normal::new(0.0, 1.0).unwrap());
-    let returns = Array::random((n_samples, n_assets), Normal::new(0.0, 0.1).unwrap());
-    
-    #[cfg(not(feature = "no-blas"))]
-    let market_data = MarketData::new(returns.clone(), features.clone());
-    
-    println!("Created market data with {} samples and {} assets", n_samples, n_assets);
-    
-    // Example 1: Basic GPU model with default configuration
-    println!("\n=== Example 1: Basic GPU Model ===");
-    
     // Check if we're running with BLAS support
     #[cfg(feature = "no-blas")]
     {
@@ -58,12 +47,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Create a smaller dataset for no-blas mode to avoid excessive computation
         let small_n_samples = 50;
         let small_n_assets = 16;
+        let small_d_model = 8;
+        let small_n_heads = 2;
+        let small_d_ff = 32;
+        let small_n_layers = 1;
+        
         let small_features = Array::random((small_n_samples, small_n_assets), Normal::new(0.0, 1.0).unwrap());
         let small_returns = Array::random((small_n_samples, small_n_assets), Normal::new(0.0, 0.1).unwrap());
         let small_market_data = MarketData::new(small_returns, small_features);
         
         // Create a basic transformer model with CPU computation
-        let transformer_config = TransformerConfig::new(small_n_assets, d_model, n_heads, d_ff, n_layers);
+        let transformer_config = TransformerConfig::new(small_n_assets, small_d_model, small_n_heads, small_d_ff, small_n_layers);
         let mut cpu_model = TransformerRiskModel::with_config(transformer_config.clone())?;
         
         // Train the CPU model
@@ -83,6 +77,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     #[cfg(not(feature = "no-blas"))]
     {
+        let features = Array::random((n_samples, n_assets), Normal::new(0.0, 1.0).unwrap());
+        let returns = Array::random((n_samples, n_assets), Normal::new(0.0, 0.1).unwrap());
+        let market_data = MarketData::new(returns.clone(), features.clone());
+        
+        println!("Created market data with {} samples and {} assets", n_samples, n_assets);
+        
         // Create a basic transformer model with CPU computation
         let transformer_config = TransformerConfig::new(n_assets, d_model, n_heads, d_ff, n_layers);
         let mut cpu_model = TransformerRiskModel::with_config(transformer_config.clone())?;
