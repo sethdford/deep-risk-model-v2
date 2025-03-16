@@ -30,11 +30,28 @@ jobs:
       if: matrix.install_deps
       run: |
         sudo apt-get update
-        sudo apt-get install -y libopenblas-dev
+        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev gfortran
+        echo "OPENBLAS_PATH=/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+    
+    - name: Set up Rust cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ matrix.blas }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ matrix.blas }}-
     
     - name: Build with OpenBLAS
       if: matrix.blas == 'with-openblas'
-      run: cargo build --verbose --features ${{ matrix.features }}
+      run: |
+        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu"
+        cargo build --verbose --features ${{ matrix.features }}
+      env:
+        OPENBLAS_SYSTEM: 1
     
     - name: Clean before building without BLAS
       if: matrix.blas == 'without-blas'
@@ -48,7 +65,11 @@ jobs:
     
     - name: Run tests with OpenBLAS
       if: matrix.blas == 'with-openblas'
-      run: cargo test --verbose --features ${{ matrix.features }}
+      run: |
+        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu"
+        cargo test --verbose --features ${{ matrix.features }}
+      env:
+        OPENBLAS_SYSTEM: 1
     
     - name: Run tests without BLAS
       if: matrix.blas == 'without-blas'
