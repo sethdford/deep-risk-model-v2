@@ -11,114 +11,52 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        blas: [with-openblas, without-blas]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        blas: [with-blas, without-blas]
         include:
-          - blas: with-openblas
-            features: "openblas-system"
-            install_deps: true
+          - blas: with-blas
+            features: "openblas"
           - blas: without-blas
             features: "no-blas"
-            install_deps: false
+        exclude:
+          # Exclude Windows with OpenBLAS for now as it can be problematic
+          - os: windows-latest
+            blas: with-blas
 
     steps:
     - uses: actions/checkout@v4
     
-    - name: Install OpenBLAS dependencies
-      if: matrix.install_deps
-      run: |
-        sudo apt-get update
-        # libatlas-base-dev provides CBLAS functionality
-        sudo apt-get install -y libopenblas-dev liblapack-dev libblas-dev libatlas-base-dev gfortran
-        # Create symbolic links to ensure libraries are found
-        sudo mkdir -p /usr/local/lib/
-        sudo ln -sf /usr/lib/x86_64-linux-gnu/libopenblas.so /usr/local/lib/libopenblas.so
-        sudo ln -sf /usr/lib/x86_64-linux-gnu/libblas.so /usr/local/lib/libblas.so
-        sudo ln -sf /usr/lib/x86_64-linux-gnu/liblapack.so /usr/local/lib/liblapack.so
-        sudo ln -sf /usr/lib/x86_64-linux-gnu/libatlas.so /usr/local/lib/libatlas.so
-        # ATLAS provides CBLAS, create a symlink for libcblas.so
-        sudo ln -sf /usr/lib/x86_64-linux-gnu/libatlas.so /usr/local/lib/libcblas.so
-        # Set environment variables
-        echo "OPENBLAS_PATH=/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-        # List available libraries for debugging
-        echo "Available libraries in /usr/lib/x86_64-linux-gnu:"
-        ls -la /usr/lib/x86_64-linux-gnu/lib*blas* || true
-        ls -la /usr/lib/x86_64-linux-gnu/libopenblas* || true
-        ls -la /usr/lib/x86_64-linux-gnu/liblapack* || true
-        ls -la /usr/lib/x86_64-linux-gnu/libatlas* || true
-        # Check if OpenBLAS has CBLAS symbols
-        nm -D /usr/lib/x86_64-linux-gnu/libopenblas.so | grep -i cblas || true
-        # Check if ATLAS has the required CBLAS symbols
-        nm -D /usr/lib/x86_64-linux-gnu/libatlas.so | grep -i cblas_[sdcz]gemm || true
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
     
     - name: Set up Rust cache
-      uses: actions/cache@v3
+      uses: Swatinem/rust-cache@v2
       with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ matrix.blas }}-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-${{ matrix.blas }}-
+        key: ${{ matrix.os }}-${{ matrix.blas }}
     
-    - name: Build with OpenBLAS
-      if: matrix.blas == 'with-openblas'
+    # Install system dependencies for OpenBLAS on Ubuntu
+    - name: Install OpenBLAS dependencies (Ubuntu)
+      if: matrix.blas == 'with-blas' && matrix.os == 'ubuntu-latest'
       run: |
-        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu -C link-args=-L/usr/local/lib -C link-args=-L/usr/lib"
-        cargo build --verbose --features ${{ matrix.features }}
-      env:
-        OPENBLAS_SYSTEM: 1
+        sudo apt-get update
+        sudo apt-get install -y gfortran
     
-    - name: Build examples with OpenBLAS
-      if: matrix.blas == 'with-openblas'
-      run: |
-        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu -C link-args=-L/usr/local/lib -C link-args=-L/usr/lib"
-        cargo build --verbose --features ${{ matrix.features }} --examples
-      env:
-        OPENBLAS_SYSTEM: 1
+    # Build with the specified features
+    - name: Build
+      run: cargo build --verbose --no-default-features --features ${{ matrix.features }}
     
-    - name: Clean before building without BLAS
-      if: matrix.blas == 'without-blas'
-      run: |
-        cargo clean
-        rm -f Cargo.lock
+    # Build examples with the specified features
+    - name: Build examples
+      run: cargo build --verbose --no-default-features --features ${{ matrix.features }} --examples
     
-    - name: Build without BLAS
-      if: matrix.blas == 'without-blas'
-      run: |
-        # Ensure ndarray doesn't try to use BLAS
-        export CARGO_FEATURE_NO_BLAS=1
-        export RUSTFLAGS="-C target-feature=-crt-static"
-        cargo build --verbose --no-default-features --features ${{ matrix.features }}
-        # Build examples with the same features
-        cargo build --verbose --no-default-features --features ${{ matrix.features }} --examples
-      env:
-        # Disable BLAS in ndarray
-        CARGO_FEATURE_NO_BLAS: 1
-        # Disable BLAS in other dependencies
-        NDARRAY_NO_BLAS: 1
+    # Run tests with the specified features
+    - name: Run tests
+      run: cargo test --verbose --no-default-features --features ${{ matrix.features }}
     
-    - name: Run tests with OpenBLAS
-      if: matrix.blas == 'with-openblas'
-      run: |
-        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu -C link-args=-L/usr/local/lib -C link-args=-L/usr/lib"
-        cargo test --verbose --features ${{ matrix.features }}
-      env:
-        OPENBLAS_SYSTEM: 1
-    
-    - name: Run tests without BLAS
-      if: matrix.blas == 'without-blas'
-      run: |
-        # Ensure ndarray doesn't try to use BLAS
-        export CARGO_FEATURE_NO_BLAS=1
-        export RUSTFLAGS="-C target-feature=-crt-static"
-        cargo test --verbose --no-default-features --features ${{ matrix.features }}
-      env:
-        # Disable BLAS in ndarray
-        CARGO_FEATURE_NO_BLAS: 1
-        # Disable BLAS in other dependencies
-        NDARRAY_NO_BLAS: 1
+    # Cross-feature test: ensure code that doesn't use BLAS works with BLAS enabled
+    - name: Cross-feature test (with BLAS)
+      if: matrix.blas == 'with-blas'
+      run: cargo test --verbose --no-default-features --features ${{ matrix.features }} -- --test-threads=1 fallback

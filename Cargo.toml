@@ -34,11 +34,14 @@ rand_distr = "0.4"
 rand_chacha = "0.3"
 num-traits = "0.2"
 
-# BLAS dependencies - only included when blas feature is enabled
+# Linear algebra - simplified approach
 ndarray-linalg = { version = "0.16", optional = true }
-blas-src = { version = "0.8", optional = true }
-openblas-src = { version = "0.10", optional = true }
-cblas-sys = { version = "0.1.4", optional = true }
+
+# BLAS implementation options - only one will be used based on features
+openblas-src = { version = "0.10", optional = true, features = ["cblas"] }
+netlib-src = { version = "0.8", optional = true, features = ["cblas"] }
+intel-mkl-src = { version = "0.8", optional = true, features = ["cblas"] }
+accelerate-src = { version = "0.3", optional = true }
 
 # Async traits
 async-trait = "0.1"
@@ -76,32 +79,16 @@ sysinfo = "0.29"
 # curand-sys = { version = "0.1.0", optional = true }
 
 [features]
-default = ["blas"]
+default = ["openblas"]
 
-# Basic features - mutually exclusive
-blas = [
-    "ndarray/blas", 
-    "dep:ndarray-linalg", 
-    "dep:blas-src", 
-    "dep:openblas-src", 
-    "dep:cblas-sys"
-]
-# When no-blas is enabled, ensure ndarray doesn't try to use BLAS
+# Main feature flags - choose one BLAS implementation
+openblas = ["ndarray/blas", "ndarray-linalg", "dep:openblas-src"]
+netlib = ["ndarray/blas", "ndarray-linalg", "dep:netlib-src"]
+intel-mkl = ["ndarray/blas", "ndarray-linalg", "dep:intel-mkl-src"]
+accelerate = ["ndarray/blas", "ndarray-linalg", "dep:accelerate-src"]
+
+# No BLAS support - pure Rust implementation
 no-blas = []
-
-# BLAS implementation features - all depend on the blas feature
-openblas-system = ["blas"]
-netlib = ["blas"]
-intel-mkl = ["blas"]
-accelerate = ["blas"]
-
-# When specific BLAS implementations are enabled, enable their features on the dependencies
-[package.metadata.cargo-features]
-openblas-system.ndarray-linalg = ["openblas-system"]
-openblas-system.openblas-src = ["system"]
-netlib.ndarray-linalg = ["netlib"]
-intel-mkl.ndarray-linalg = ["intel-mkl"]
-accelerate.ndarray-linalg = ["accelerate"]
 
 # GPU feature - placeholder for future GPU support
 gpu = []  # Will include CUDA dependencies when they are properly implemented
@@ -109,7 +96,7 @@ gpu = []  # Will include CUDA dependencies when they are properly implemented
 # Ensure tests always use BLAS
 [dev-dependencies.deep_risk_model]
 path = "."
-features = ["blas"]
+features = ["openblas"]
 
 [dev-dependencies]
 # Async testing
@@ -169,6 +156,3 @@ path = "examples/quantization_example.rs"
 [[example]]
 name = "memory_optimization_example"
 path = "examples/memory_optimization_example.rs"
-
-[build-dependencies]
-cblas-sys = { version = "0.1.4", optional = true }

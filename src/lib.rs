@@ -165,22 +165,21 @@ mod tests {
     }
 }
 
-// Use the build script's configuration flags for conditional compilation
+// Conditional imports based on features
 #[cfg(not(feature = "no-blas"))]
 pub use ndarray_linalg;
 
-// Ensure we don't try to use BLAS when the no-blas feature is enabled
+// When no-blas is enabled, provide fallback implementations
 #[cfg(feature = "no-blas")]
 pub mod ndarray_linalg {
     // Empty module to satisfy imports when BLAS is not available
-    // This prevents "unresolved import" errors
     pub mod error {
         #[derive(Debug)]
         pub struct LinalgError;
     }
 }
 
-#[cfg(feature = "no-blas")]
+// Fallback implementations for when BLAS is not available
 pub mod fallback {
     //! Fallback implementations for when BLAS is not available
     use ndarray::{Array2, ArrayBase, Data, Ix2};
