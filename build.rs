@@ -2,6 +2,10 @@ fn main() {
     // Check if the no-blas feature is enabled
     let no_blas = std::env::var("CARGO_FEATURE_NO_BLAS").is_ok();
     
+    // Detect the operating system
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    let is_windows = target_os == "windows";
+    
     if no_blas {
         // If no-blas is enabled, we don't want to link against any BLAS libraries
         println!("cargo:rustc-cfg=feature=\"no-blas\"");
@@ -11,14 +15,25 @@ fn main() {
         // Explicitly disable any BLAS-related linking
         println!("cargo:rustc-cfg=feature=\"no-blas-linking\"");
     } else {
-        // Detect the operating system
-        let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
-        
         // Check if we're using Accelerate
         let use_accelerate = std::env::var("CARGO_FEATURE_ACCELERATE").is_ok();
         
+        // Special handling for Windows
+        if is_windows {
+            // On Windows, we need to use the system feature with vcpkg or no-blas
+            let use_system = std::env::var("CARGO_FEATURE_SYSTEM").is_ok();
+            
+            if !use_system && !no_blas {
+                println!("cargo:warning=On Windows, you must use either the 'system' feature with vcpkg or the 'no-blas' feature");
+                println!("cargo:warning=Defaulting to no-blas mode for this build");
+                println!("cargo:rustc-cfg=feature=\"no-blas\"");
+                println!("cargo:rustc-cfg=feature=\"no-blas-linking\"");
+            } else if use_system {
+                println!("cargo:warning=Using system BLAS via vcpkg on Windows");
+            }
+        }
         // Special handling for macOS
-        if target_os == "macos" {
+        else if target_os == "macos" {
             if use_accelerate {
                 // Use Apple's Accelerate framework
                 println!("cargo:warning=Detected macOS with Accelerate feature, using Accelerate framework");
@@ -108,6 +123,13 @@ fn main() {
             println!("cargo:warning=  cargo build --features netlib");
             println!("cargo:warning=  cargo build --features intel-mkl");
             println!("cargo:warning=  cargo build --features accelerate (macOS only)");
+            
+            if is_windows {
+                println!("cargo:warning=On Windows, you must use the 'system' feature with vcpkg:");
+                println!("cargo:warning=  cargo build --features system");
+                println!("cargo:warning=Or use the 'no-blas' feature for a pure Rust implementation:");
+                println!("cargo:warning=  cargo build --features no-blas");
+            }
         }
     }
     

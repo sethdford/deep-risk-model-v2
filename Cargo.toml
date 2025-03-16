@@ -87,6 +87,9 @@ netlib = ["ndarray/blas", "ndarray-linalg", "dep:netlib-src"]
 intel-mkl = ["ndarray/blas", "ndarray-linalg", "dep:intel-mkl-src"]
 accelerate = ["ndarray/blas", "ndarray-linalg", "dep:accelerate-src"]
 
+# System BLAS - use pre-installed BLAS libraries (required for Windows)
+system = ["ndarray/blas", "ndarray-linalg", "openblas-src/system"]
+
 # No BLAS support - pure Rust implementation
 no-blas = []
 
