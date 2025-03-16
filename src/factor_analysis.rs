@@ -1,5 +1,6 @@
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, s, Axis};
-#[cfg(feature = "blas-enabled")]
+#[cfg(all(feature = "blas-enabled", not(feature = "no-blas")))]
+#[cfg(any(feature = "openblas", feature = "netlib", feature = "intel-mkl", feature = "accelerate", feature = "system"))]
 use ndarray_linalg::Solve;
 use crate::error::ModelError;
 

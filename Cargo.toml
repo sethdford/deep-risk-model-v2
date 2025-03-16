@@ -35,7 +35,7 @@ rand_chacha = "0.3"
 num-traits = "0.2"
 
 # Linear algebra - simplified approach
-ndarray-linalg = { version = "0.16", optional = true }
+ndarray-linalg = { version = "0.16", optional = true, features = ["openblas-static"] }
 
 # BLAS implementation options - only one will be used based on features
 openblas-src = { version = "0.10", optional = true, features = ["cblas"] }

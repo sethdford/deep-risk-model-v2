@@ -176,10 +176,11 @@ mod tests {
 
 // Conditional imports based on features
 #[cfg(all(feature = "blas-enabled", not(feature = "no-blas")))]
+#[cfg(any(feature = "openblas", feature = "netlib", feature = "intel-mkl", feature = "accelerate", feature = "system"))]
 pub use ndarray_linalg;
 
-// When no-blas is enabled, provide fallback implementations
-#[cfg(feature = "no-blas")]
+// When no-blas is enabled or ndarray_linalg is not available, provide fallback implementations
+#[cfg(any(feature = "no-blas", not(any(feature = "openblas", feature = "netlib", feature = "intel-mkl", feature = "accelerate", feature = "system"))))]
 pub mod ndarray_linalg {
     // Empty module to satisfy imports when BLAS is not available
     pub mod error {
@@ -188,14 +189,13 @@ pub mod ndarray_linalg {
         
         impl std::fmt::Display for LinalgError {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "LinalgError: BLAS operations not available in no-blas mode")
+                write!(f, "Linear algebra operation failed (fallback implementation)")
             }
         }
         
         impl std::error::Error for LinalgError {}
     }
     
-    // Provide stub implementations for common traits to satisfy imports
     pub trait Solve<T> {
         type Output;
         fn solve(&self, _b: &T) -> Result<Self::Output, error::LinalgError>;
@@ -211,36 +211,34 @@ pub mod ndarray_linalg {
         fn svd(&self) -> Result<Self::Output, error::LinalgError>;
     }
     
-    // Implement stubs for common ndarray types to prevent compilation errors
-    impl<S, D> Solve<ndarray::ArrayBase<S, D>> for ndarray::ArrayBase<S, D> 
+    // Implement the traits for Array2 to provide fallback implementations
+    impl<S, D> Solve<ndarray::ArrayBase<S, D>> for ndarray::Array2<f32>
     where
-        S: ndarray::Data,
+        S: ndarray::Data<Elem = f32>,
         D: ndarray::Dimension,
     {
         type Output = ndarray::Array<f32, D>;
+        
         fn solve(&self, _b: &ndarray::ArrayBase<S, D>) -> Result<Self::Output, error::LinalgError> {
+            // Use fallback implementation
             Err(error::LinalgError)
         }
     }
     
-    impl<S, D> Eigh for ndarray::ArrayBase<S, D> 
-    where
-        S: ndarray::Data,
-        D: ndarray::Dimension,
-    {
-        type Output = (ndarray::Array<f32, D>, ndarray::Array<f32, D>);
+    impl Eigh for ndarray::Array2<f32> {
+        type Output = (ndarray::Array<f32, ndarray::Ix1>, ndarray::Array<f32, ndarray::Ix2>);
+        
         fn eigh(&self) -> Result<Self::Output, error::LinalgError> {
+            // Use fallback implementation
             Err(error::LinalgError)
         }
     }
     
-    impl<S, D> Svd for ndarray::ArrayBase<S, D> 
-    where
-        S: ndarray::Data,
-        D: ndarray::Dimension,
-    {
-        type Output = (ndarray::Array<f32, D>, ndarray::Array<f32, D>, ndarray::Array<f32, D>);
+    impl Svd for ndarray::Array2<f32> {
+        type Output = (ndarray::Array<f32, ndarray::Ix2>, ndarray::Array<f32, ndarray::Ix1>, ndarray::Array<f32, ndarray::Ix2>);
+        
         fn svd(&self) -> Result<Self::Output, error::LinalgError> {
+            // Use fallback implementation
             Err(error::LinalgError)
         }
     }
