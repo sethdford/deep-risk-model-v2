@@ -19,7 +19,6 @@ fn main() {
         // Common library paths for Linux
         println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
         println!("cargo:rustc-link-search=native=/usr/lib");
-        println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu/atlas");
         
         // Check if OPENBLAS_PATH is set in the environment
         if let Ok(openblas_path) = std::env::var("OPENBLAS_PATH") {
@@ -30,25 +29,17 @@ fn main() {
             println!("cargo:warning=Building with system OpenBLAS");
             
             // Explicitly link to system OpenBLAS and LAPACK libraries
+            // OpenBLAS includes CBLAS functionality
             println!("cargo:rustc-link-lib=openblas");
-            
-            // Try to link with cblas from different sources
-            // First try standard cblas
-            println!("cargo:rustc-link-lib=cblas");
-            // Then try atlas cblas
-            println!("cargo:rustc-link-lib=atlas");
-            println!("cargo:rustc-link-lib=satlas");
-            
             println!("cargo:rustc-link-lib=lapack");
-            println!("cargo:rustc-link-lib=lapacke");
             println!("cargo:rustc-link-lib=gfortran");
             
             // On some systems, BLAS might be a separate library
-            println!("cargo:rustc-link-lib=blas");
+            // but OpenBLAS should provide all BLAS functionality
+            println!("cargo:rustc-link-lib=dylib=openblas");
         } else if netlib {
             println!("cargo:warning=Building with Netlib");
             println!("cargo:rustc-link-lib=blas");
-            println!("cargo:rustc-link-lib=cblas");
             println!("cargo:rustc-link-lib=lapack");
         } else if intel_mkl {
             println!("cargo:warning=Building with Intel MKL");
@@ -59,9 +50,6 @@ fn main() {
             
             // For default BLAS, also try to link with system libraries
             println!("cargo:rustc-link-lib=openblas");
-            println!("cargo:rustc-link-lib=cblas");
-            println!("cargo:rustc-link-lib=atlas");
-            println!("cargo:rustc-link-lib=blas");
             println!("cargo:rustc-link-lib=lapack");
         }
     }

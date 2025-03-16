@@ -30,16 +30,14 @@ jobs:
       if: matrix.install_deps
       run: |
         sudo apt-get update
-        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev libatlas-base-dev libblas-dev gfortran
+        sudo apt-get install -y libopenblas-dev liblapack-dev gfortran
         echo "OPENBLAS_PATH=/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-        # Create symbolic links if needed
-        sudo ln -sf /usr/lib/x86_64-linux-gnu/libopenblas.so /usr/lib/libopenblas.so
-        sudo ln -sf /usr/lib/x86_64-linux-gnu/libcblas.so /usr/lib/libcblas.so || true
-        sudo ln -sf /usr/lib/x86_64-linux-gnu/libblas.so /usr/lib/libblas.so
         # List available libraries for debugging
         echo "Available libraries in /usr/lib/x86_64-linux-gnu:"
-        ls -la /usr/lib/x86_64-linux-gnu/lib*blas*
+        ls -la /usr/lib/x86_64-linux-gnu/lib*blas* || true
+        ls -la /usr/lib/x86_64-linux-gnu/libopenblas* || true
+        ls -la /usr/lib/x86_64-linux-gnu/liblapack* || true
     
     - name: Set up Rust cache
       uses: actions/cache@v3
