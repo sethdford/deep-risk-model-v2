@@ -1,8 +1,9 @@
 # Deep Risk Model
 
-A deep learning-based risk model for financial markets implemented in Rust.
+A significant improvement over https://github.com/sethdford/deep_risk_model-v0 which is a Rust implementation of a deep learning-based risk model for financial markets, inspired by the research paper ["Deep Risk Model: A Deep Learning Solution for Mining Latent Risk Factors to Improve Covariance Matrix Estimation"](https://arxiv.org/abs/2107.05201) (Lin et al., 2021). This project combines Graph Attention Networks (GAT) and Gated Recurrent Units (GRU) to generate risk factors and estimate covariance matrices from market data.
 
-## Features
+
+## Features and Improvements over V0
 
 - Deep Risk Model with transformer architecture
 - Temporal Fusion Transformer (TFT) for time series analysis
@@ -123,6 +124,27 @@ MIT
 - 📈 Achieved significant speedup in matrix operations
 - 💾 Reduced peak memory usage
 - 🚀 Added GPU acceleration for matrix operations and attention mechanisms
+
+### Thread Safety & Concurrency
+- 🔒 Implemented Send + Sync trait for all model components
+- 🧵 Made all models thread-safe for concurrent processing
+- 🔄 Added async/await support with Tokio runtime
+- 📊 Enabled parallel processing of multiple models
+- 🚀 Improved performance in multi-threaded environments
+
+### Error Handling
+- 🛡️ Implemented custom ModelError type for comprehensive error handling
+- 🔍 Added detailed error messages and context
+- 🧪 Improved error propagation throughout the codebase
+- 📊 Added error recovery mechanisms for robust operation
+- 🔄 Implemented fallback mechanisms for error scenarios
+
+### No-BLAS Fallback
+- 🔄 Added pure Rust implementation for environments without BLAS
+- 📊 Implemented matrix operations in pure Rust
+- 🧪 Added comprehensive test suite for no-BLAS configuration
+- 🚀 Enabled use in WebAssembly and embedded environments
+- 🔧 Simplified deployment in environments with limited dependencies
 
 ### Testing & Benchmarking
 - 📊 Added comprehensive criterion.rs benchmarks
@@ -262,12 +284,35 @@ cargo run --example quantization_example
 ```
 
 ## 🔜 Upcoming Features
-1. Market regime detection with HMM
-2. Comprehensive stress testing framework
+1. ✅ Market regime detection with HMM
+2. ✅ Comprehensive stress testing framework
 3. ✅ GPU acceleration for matrix operations
 4. ✅ Quantization for model compression
 5. ✅ Memory optimization for large models
-6. Python bindings via PyO3
+6. ✅ Python bindings via PyO3
+7. ✅ No-BLAS fallback implementation for environments without BLAS
+8. ✅ Send + Sync trait implementations for thread safety
+9. ✅ Improved error handling with custom ModelError type
+10. ✅ Comprehensive documentation and examples
+
+## 🔄 No-BLAS Fallback Implementation
+
+The library now includes a pure Rust fallback implementation for environments where BLAS is not available:
+
+- ✅ Automatic fallback to pure Rust implementation when BLAS is not available
+- ✅ Conditional compilation with feature flags (`no-blas` feature)
+- ✅ Matrix multiplication and inversion implemented in pure Rust
+- ✅ Comprehensive test suite for both BLAS and no-BLAS configurations
+- ✅ CI/CD pipeline testing both configurations
+
+To use the no-BLAS implementation:
+
+```bash
+# Build without BLAS (pure Rust implementation)
+cargo build --no-default-features --features no-blas
+```
+
+This allows the library to be used in environments where installing BLAS dependencies is not possible or practical, such as WebAssembly targets or certain embedded systems.
 
 ## 📚 Documentation
 - [Architecture](docs/ARCHITECTURE.md) - System architecture and capabilities
@@ -291,6 +336,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 | Multi-head Attention | ~200ms | 18.9ms | 1.54ms | 99.2% faster |
 | Covariance (64) | ~5ms | 1.40ms | 0.89ms | 82.2% faster |
 | Memory Usage (Large Model) | 100% | ~20% | ~15% | 85% reduction |
+| Thread Safety | No | Partial | Complete | 100% thread-safe |
+| Error Recovery | Basic | Improved | Comprehensive | Robust error handling |
+| No-BLAS Support | None | None | Complete | Works without BLAS |
+| Python Compatibility | None | None | Python 3.13 | Latest Python support |
 
 ## 🔍 System Requirements
 - CPU: Modern processor with SIMD support
@@ -319,7 +368,7 @@ This implementation is based on academic research that demonstrates how deep lea
 │• Multi-head     │• Variable       │• Orthogonal-    │• Covariance   │
 │  Attention      │  Selection      │  ization        │  Estimation   │
 │• Positional     │• Static         │• Factor         │• Risk Factor  │
-│  Encoding       │• Temporal       │• Quality        │• Portfolio    │
+│  Encoding       │• Temporal       │• Metrics        │  Analysis     │
 │• Feed-Forward   │• Self-Attention │• Metrics        │  Analysis     │
 │  Networks       │• Temporal       │• Metrics        │  Analysis     │
 └─────────────────┴─────────────────┴─────────────────┴───────────────┘
