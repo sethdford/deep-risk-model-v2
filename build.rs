@@ -24,14 +24,14 @@ fn configure_linux() {
         // Link against OpenBLAS directly - on most Linux systems, libopenblas.so includes CBLAS and LAPACK
         println!("cargo:rustc-link-lib=openblas");
         
+        // Link against gfortran which is needed for some LAPACK routines
+        println!("cargo:rustc-link-lib=gfortran");
+        
         // Don't explicitly link against cblas and lapack as they're included in OpenBLAS
         // If we're using the system feature, the system is responsible for providing these
         if cfg!(feature = "system") {
             println!("cargo:warning=deep_risk_model@{}: Using system-provided BLAS libraries", env!("CARGO_PKG_VERSION"));
         }
-        
-        // Link against gfortran which is needed for some LAPACK routines
-        println!("cargo:rustc-link-lib=gfortran");
     }
     
     // Check if Netlib is enabled
@@ -163,47 +163,8 @@ fn main() {
             }
         },
         _ => {
-            // Linux-specific configurations
-            if openblas_enabled && !no_blas_enabled {
-                println!("cargo:warning=Using OpenBLAS on Linux");
-                // Try to find OpenBLAS in common locations
-                let linux_paths = [
-                    "/usr/lib",
-                    "/usr/lib/x86_64-linux-gnu",
-                    "/usr/lib/aarch64-linux-gnu",
-                    "/usr/local/lib",
-                ];
-                
-                let mut found_openblas = false;
-                
-                // Check if OpenBLAS exists in any of the paths
-                for path in linux_paths.iter() {
-                    if std::path::Path::new(&format!("{}/libopenblas.so", path)).exists() {
-                        println!("cargo:rustc-link-search={}", path);
-                        println!("cargo:warning=Found OpenBLAS at {}", path);
-                        found_openblas = true;
-                        
-                        // Explicitly link to all required libraries
-                        println!("cargo:rustc-link-lib=openblas");
-                        println!("cargo:rustc-link-lib=cblas");
-                        println!("cargo:rustc-link-lib=lapack");
-                        println!("cargo:rustc-link-lib=gfortran");
-                        break;
-                    }
-                }
-                
-                if !found_openblas {
-                    println!("cargo:warning=Could not find OpenBLAS in standard locations");
-                    println!("cargo:warning=You may need to install it: sudo apt-get install libopenblas-dev liblapack-dev");
-                }
-            } else if !no_blas_enabled {
-                // If no specific BLAS implementation is enabled but we're not in no-blas mode,
-                // ensure we link to the necessary libraries
-                println!("cargo:rustc-link-lib=openblas");
-                println!("cargo:rustc-link-lib=cblas");
-                println!("cargo:rustc-link-lib=lapack");
-                println!("cargo:rustc-link-lib=gfortran");
-            }
+            // Linux-specific configurations are now handled by the configure_linux function
+            // No need for additional configuration here
         }
     }
     
