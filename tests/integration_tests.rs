@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use deep_risk_model::{
+    use deep_risk_model::prelude::{
         ModelError,
         DeepRiskModel,
         MarketData,

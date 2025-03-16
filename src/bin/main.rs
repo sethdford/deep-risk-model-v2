@@ -1,4 +1,4 @@
-use deep_risk_model::{
+use deep_risk_model::prelude::{
     MarketData,
     RiskModel,
     DeepRiskModel,
