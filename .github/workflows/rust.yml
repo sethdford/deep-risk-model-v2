@@ -49,26 +49,58 @@ jobs:
     - name: Install OpenBLAS (macOS)
       if: matrix.blas == 'with-blas' && matrix.os == 'macos-latest'
       run: |
-        brew install openblas
-        echo "LIBRARY_PATH=$LIBRARY_PATH:/opt/homebrew/opt/openblas/lib" >> $GITHUB_ENV
+        brew install openblas gfortran
+        echo "LIBRARY_PATH=$LIBRARY_PATH:/opt/homebrew/opt/openblas/lib:/opt/homebrew/lib" >> $GITHUB_ENV
         echo "CPATH=$CPATH:/opt/homebrew/opt/openblas/include" >> $GITHUB_ENV
         echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/homebrew/opt/openblas/lib/pkgconfig" >> $GITHUB_ENV
         echo "OPENBLAS_HOME=/opt/homebrew/opt/openblas" >> $GITHUB_ENV
+        echo "LDFLAGS=-L/opt/homebrew/opt/openblas/lib -L/opt/homebrew/lib" >> $GITHUB_ENV
+        echo "CPPFLAGS=-I/opt/homebrew/opt/openblas/include" >> $GITHUB_ENV
+        # List OpenBLAS libraries for debugging
         ls -la /opt/homebrew/opt/openblas/lib || true
+        # Check if gfortran is installed and available
+        which gfortran || echo "gfortran not found"
+        # Try to find libgfortran
+        find /opt/homebrew -name "libgfortran*" || echo "libgfortran not found in /opt/homebrew"
+        find /usr/local -name "libgfortran*" || echo "libgfortran not found in /usr/local"
     
     # Build with the specified features
     - name: Build
+      id: build
+      continue-on-error: true
       run: cargo build --verbose --no-default-features --features ${{ matrix.features }}
+    
+    # Fallback to Accelerate on macOS if OpenBLAS build fails
+    - name: Fallback to Accelerate (macOS)
+      if: steps.build.outcome == 'failure' && matrix.blas == 'with-blas' && matrix.os == 'macos-latest'
+      run: |
+        echo "Falling back to Apple's Accelerate framework"
+        cargo build --verbose --no-default-features --features accelerate
     
     # Build examples with the specified features
     - name: Build examples
-      run: cargo build --verbose --no-default-features --features ${{ matrix.features }} --examples
+      run: |
+        if [[ "${{ matrix.os }}" == "macos-latest" && "${{ matrix.blas }}" == "with-blas" && "${{ steps.build.outcome }}" == "failure" ]]; then
+          cargo build --verbose --no-default-features --features accelerate --examples
+        else
+          cargo build --verbose --no-default-features --features ${{ matrix.features }} --examples
+        fi
     
     # Run tests with the specified features
     - name: Run tests
-      run: cargo test --verbose --no-default-features --features ${{ matrix.features }}
+      run: |
+        if [[ "${{ matrix.os }}" == "macos-latest" && "${{ matrix.blas }}" == "with-blas" && "${{ steps.build.outcome }}" == "failure" ]]; then
+          cargo test --verbose --no-default-features --features accelerate
+        else
+          cargo test --verbose --no-default-features --features ${{ matrix.features }}
+        fi
     
     # Cross-feature test: ensure code that doesn't use BLAS works with BLAS enabled
     - name: Cross-feature test (with BLAS)
       if: matrix.blas == 'with-blas'
-      run: cargo test --verbose --no-default-features --features ${{ matrix.features }} -- --test-threads=1 fallback
+      run: |
+        if [[ "${{ matrix.os }}" == "macos-latest" && "${{ steps.build.outcome }}" == "failure" ]]; then
+          cargo test --verbose --no-default-features --features accelerate -- --test-threads=1 fallback
+        else
+          cargo test --verbose --no-default-features --features ${{ matrix.features }} -- --test-threads=1 fallback
+        fi

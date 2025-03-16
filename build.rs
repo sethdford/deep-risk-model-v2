@@ -11,35 +11,78 @@ fn main() {
         // Detect the operating system
         let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
         
+        // Check if we're using Accelerate
+        let use_accelerate = std::env::var("CARGO_FEATURE_ACCELERATE").is_ok();
+        
         // Special handling for macOS
         if target_os == "macos" {
-            println!("cargo:warning=Detected macOS, adding explicit OpenBLAS linking");
-            
-            // Try to find OpenBLAS in common locations
-            let homebrew_path = "/opt/homebrew/opt/openblas";
-            let usr_local_path = "/usr/local/opt/openblas";
-            
-            // Check if Homebrew OpenBLAS exists (common on Apple Silicon)
-            if std::path::Path::new(&format!("{}/lib", homebrew_path)).exists() {
-                println!("cargo:rustc-link-search={}/lib", homebrew_path);
-                println!("cargo:warning=Found OpenBLAS at {}", homebrew_path);
-            } else if std::path::Path::new(&format!("{}/lib", usr_local_path)).exists() {
-                println!("cargo:rustc-link-search={}/lib", usr_local_path);
-                println!("cargo:warning=Found OpenBLAS at {}", usr_local_path);
+            if use_accelerate {
+                // Use Apple's Accelerate framework
+                println!("cargo:warning=Detected macOS with Accelerate feature, using Accelerate framework");
+                println!("cargo:rustc-link-lib=framework=Accelerate");
             } else {
-                println!("cargo:warning=Could not find OpenBLAS in standard locations, using default paths");
+                println!("cargo:warning=Detected macOS, adding explicit OpenBLAS linking");
+                
+                // Try to find OpenBLAS in common locations
+                let homebrew_paths = [
+                    "/opt/homebrew/opt/openblas",
+                    "/usr/local/opt/openblas",
+                    "/opt/homebrew/Cellar/openblas/0.3.29",
+                    "/usr/local/Cellar/openblas/0.3.29",
+                ];
+                
+                let mut found_openblas = false;
+                
+                // Check if OpenBLAS exists in any of the paths
+                for path in homebrew_paths.iter() {
+                    if std::path::Path::new(&format!("{}/lib", path)).exists() {
+                        println!("cargo:rustc-link-search={}/lib", path);
+                        println!("cargo:warning=Found OpenBLAS at {}", path);
+                        found_openblas = true;
+                        break;
+                    }
+                }
+                
+                if !found_openblas {
+                    println!("cargo:warning=Could not find OpenBLAS in standard locations, using default paths");
+                }
+                
+                // Explicitly link to OpenBLAS, BLAS, and LAPACK
+                println!("cargo:rustc-link-lib=openblas");
+                println!("cargo:rustc-link-lib=blas");
+                println!("cargo:rustc-link-lib=lapack");
+                
+                // Check if gfortran is available
+                let gfortran_paths = [
+                    "/opt/homebrew/opt/gfortran/lib",
+                    "/usr/local/opt/gfortran/lib",
+                    "/opt/homebrew/lib",
+                    "/usr/local/lib",
+                ];
+                
+                let mut found_gfortran = false;
+                
+                for path in gfortran_paths.iter() {
+                    if std::path::Path::new(&format!("{}/libgfortran.dylib", path)).exists() {
+                        println!("cargo:rustc-link-search={}", path);
+                        println!("cargo:warning=Found gfortran at {}", path);
+                        found_gfortran = true;
+                        break;
+                    }
+                }
+                
+                // Only link against gfortran if it's available
+                if found_gfortran {
+                    println!("cargo:rustc-link-lib=gfortran");
+                } else {
+                    println!("cargo:warning=gfortran not found, skipping gfortran linking");
+                    // On macOS, we can often get away without explicitly linking to gfortran
+                    // as it might be linked through OpenBLAS
+                }
+                
+                // Add standard math library
+                println!("cargo:rustc-link-lib=m");
             }
-            
-            // Explicitly link to OpenBLAS, BLAS, and LAPACK
-            println!("cargo:rustc-link-lib=openblas");
-            println!("cargo:rustc-link-lib=blas");
-            println!("cargo:rustc-link-lib=lapack");
-            
-            // Add gfortran for LAPACK
-            println!("cargo:rustc-link-lib=gfortran");
-            
-            // Add standard math library
-            println!("cargo:rustc-link-lib=m");
         }
         
         // Let the *-src crates handle the linking
