@@ -1,7 +1,7 @@
 use deep_risk_model::prelude::{
     MarketData,
     RiskModel,
-    DeepRiskModel,
+    TransformerRiskModel,
 };
 use lambda_http::{run, service_fn, Body, Error, Request, Response};
 use serde_json::json;
@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use ndarray::Array2;
 
-type SharedModel = Arc<Mutex<DeepRiskModel>>;
+type SharedModel = Arc<Mutex<TransformerRiskModel>>;
 
 async fn function_handler(event: Request, model: SharedModel) -> Result<Response<Body>, Error> {
     // Parse request body
@@ -68,8 +68,12 @@ async fn function_handler(event: Request, model: SharedModel) -> Result<Response
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // Initialize model
-    let model = DeepRiskModel::new(100, 10)?;
+    // Initialize model with appropriate parameters for TransformerRiskModel
+    let d_model = 64;
+    let n_heads = 8;
+    let d_ff = 256;
+    let n_layers = 3;
+    let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
     let shared_model = Arc::new(Mutex::new(model));
     
     // Start lambda service
