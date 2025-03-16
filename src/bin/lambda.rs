@@ -74,4 +74,4 @@ async fn main() -> Result<(), Error> {
     
     // Start lambda service
     run(service_fn(|event| function_handler(event, shared_model.clone()))).await
-}
+} 
