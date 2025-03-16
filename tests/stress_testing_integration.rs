@@ -10,6 +10,7 @@ use ndarray_rand::rand_distr::Normal;
 use std::collections::HashMap;
 use std::time::Duration;
 
+#[cfg(not(feature = "no-blas"))]
 #[tokio::test]
 async fn test_stress_testing_integration() -> Result<(), Box<dyn std::error::Error>> {
     // Create model
@@ -165,6 +166,15 @@ async fn test_stress_testing_integration() -> Result<(), Box<dyn std::error::Err
     Ok(())
 }
 
+#[cfg(feature = "no-blas")]
+#[tokio::test]
+async fn test_stress_testing_integration() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Skipping stress testing integration test in no-blas mode");
+    println!("This test requires BLAS support for matrix operations");
+    Ok(())
+}
+
+#[cfg(not(feature = "no-blas"))]
 #[tokio::test]
 async fn test_scenario_combination() -> Result<(), Box<dyn std::error::Error>> {
     // Create synthetic data
@@ -237,5 +247,13 @@ async fn test_scenario_combination() -> Result<(), Box<dyn std::error::Error>> {
     let has_combinations = scenarios.iter().any(|(name, _)| name.contains('+'));
     assert!(has_combinations, "No combination scenarios were generated");
     
+    Ok(())
+}
+
+#[cfg(feature = "no-blas")]
+#[tokio::test]
+async fn test_scenario_combination() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Skipping scenario combination test in no-blas mode");
+    println!("This test requires BLAS support for matrix operations");
     Ok(())
 } 

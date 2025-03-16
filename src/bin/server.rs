@@ -3,7 +3,6 @@ use axum::{
     extract::State,
     Json,
     Router,
-    http::StatusCode,
 };
 use deep_risk_model::prelude::{
     MarketData,

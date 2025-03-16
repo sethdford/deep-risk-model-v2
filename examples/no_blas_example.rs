@@ -1,5 +1,5 @@
 use deep_risk_model::fallback;
-use ndarray::{array, Array1, Array2};
+use ndarray::{array, Array2};
 
 fn main() {
     println!("Deep Risk Model - No-BLAS Example");
