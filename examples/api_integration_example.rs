@@ -58,10 +58,11 @@ fn array2_to_vec(array: &Array2<f32>) -> Vec<Vec<f32>> {
     result
 }
 
+// For no-blas mode, we need to keep dimensions very small
 #[cfg(feature = "no-blas")]
-const N_SAMPLES: usize = 10;
+const N_SAMPLES: usize = 5;  // Reduced from 10 to work with max_seq_len=2
 #[cfg(feature = "no-blas")]
-const N_ASSETS: usize = 3;  // Reduce to 3 assets for no-blas mode
+const N_ASSETS: usize = 3;   // Keep at 3 assets for no-blas mode (max matrix size for inversion)
 #[cfg(feature = "no-blas")]
 const N_FACTORS: usize = 2;  // Reduce to 2 factors for no-blas mode
 
@@ -78,6 +79,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Running in no-blas mode with reduced dimensions");
     #[cfg(feature = "no-blas")]
     println!("Note: Performance will be significantly slower without BLAS");
+    #[cfg(feature = "no-blas")]
+    println!("Using 3x3 matrices (maximum size for matrix inversion in no-blas mode)");
     
     // Create synthetic market data
     let features = Array2::random((N_SAMPLES, N_ASSETS * 2), Normal::new(0.0, 1.0).unwrap());
@@ -91,7 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // to avoid using BLAS operations
         let transformer_config = TransformerConfig {
             d_model: N_ASSETS * 2, // Match the feature dimension
-            max_seq_len: 5,        // Minimal sequence length for testing
+            max_seq_len: 2,        // Minimal sequence length for testing (must be <= N_SAMPLES)
             n_heads: 1,            // Minimal number of heads
             d_ff: 8,               // Minimal feed-forward dimension
             n_layers: 1,           // Single layer transformer
@@ -114,23 +117,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     model.train(&market_data).await?;
     println!("Training completed in {:?}", start.elapsed());
 
-    println!("\nGenerating risk factors...");
-    let start = Instant::now();
-    let factors = model.generate_risk_factors(&market_data).await?;
-    println!("Risk factors generated in {:?}", start.elapsed());
-    println!("Risk factors shape: {:?}", factors.factors().shape());
+    // In no-blas mode, we need to handle operations carefully
+    #[cfg(feature = "no-blas")]
+    {
+        println!("\nSkipping risk factor generation and covariance estimation in no-blas mode");
+        println!("These operations require matrix operations that are limited in no-blas mode");
+        println!("For a complete example, please run with BLAS support enabled");
+    }
 
-    println!("\nEstimating covariance...");
-    let start = Instant::now();
-    let covariance = model.estimate_covariance(&market_data).await?;
-    println!("Covariance estimated in {:?}", start.elapsed());
-    println!("Covariance shape: {:?}", covariance.shape());
+    #[cfg(not(feature = "no-blas"))]
+    {
+        println!("\nGenerating risk factors...");
+        let start = Instant::now();
+        let factors = model.generate_risk_factors(&market_data).await?;
+        println!("Risk factors generated in {:?}", start.elapsed());
+        println!("Risk factors shape: {:?}", factors.factors().shape());
+
+        println!("\nEstimating covariance...");
+        let start = Instant::now();
+        let covariance = model.estimate_covariance(&market_data).await?;
+        println!("Covariance estimated in {:?}", start.elapsed());
+        println!("Covariance shape: {:?}", covariance.shape());
+    }
 
     // Error handling example
     println!("\nTesting error handling with incorrect data...");
     // Create data with mismatched dimensions - different number of samples
     let incorrect_returns = Array2::random((N_SAMPLES / 2, N_ASSETS), Uniform::new(-0.01, 0.01));
-    let incorrect_features = Array2::random((N_SAMPLES / 2 + 5, N_ASSETS * 2), Uniform::new(-1.0, 1.0));
+    let incorrect_features = Array2::random((N_SAMPLES / 2 + 1, N_ASSETS * 2), Uniform::new(-1.0, 1.0));
     let incorrect_market_data = MarketData::new(incorrect_returns, incorrect_features);
 
     match model.train(&incorrect_market_data).await {
@@ -138,14 +152,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => println!("Training failed as expected: {}", e),
     }
 
-    match model.generate_risk_factors(&incorrect_market_data).await {
-        Ok(_) => println!("Risk factor generation succeeded (unexpected)"),
-        Err(e) => println!("Risk factor generation failed as expected: {}", e),
-    }
+    #[cfg(not(feature = "no-blas"))]
+    {
+        match model.generate_risk_factors(&incorrect_market_data).await {
+            Ok(_) => println!("Risk factor generation succeeded (unexpected)"),
+            Err(e) => println!("Risk factor generation failed as expected: {}", e),
+        }
 
-    match model.estimate_covariance(&incorrect_market_data).await {
-        Ok(_) => println!("Covariance estimation succeeded (unexpected)"),
-        Err(e) => println!("Covariance estimation failed as expected: {}", e),
+        match model.estimate_covariance(&incorrect_market_data).await {
+            Ok(_) => println!("Covariance estimation succeeded (unexpected)"),
+            Err(e) => println!("Covariance estimation failed as expected: {}", e),
+        }
     }
 
     Ok(())
