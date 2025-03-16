@@ -39,12 +39,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libopenblas-dev gfortran
     
-    - name: Build Lambda binary
-      run: |
-        cargo build --release --features openblas --no-default-features --bin bootstrap
-        mkdir -p .aws-sam/build/DeepRiskModelFunction/
-        cp target/release/bootstrap .aws-sam/build/DeepRiskModelFunction/
-    
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -59,7 +53,7 @@ jobs:
       run: sam validate
     
     - name: SAM Build
-      run: sam build --use-container
+      run: sam build
     
     - name: Create Deployment
       id: deployment

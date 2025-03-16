@@ -7,8 +7,6 @@ Globals:
   Function:
     Timeout: 30
     MemorySize: 1024
-    Architectures:
-      - x86_64
     Environment:
       Variables:
         RUST_BACKTRACE: 1
@@ -20,8 +18,6 @@ Resources:
       CodeUri: .
       Handler: bootstrap
       Runtime: provided.al2
-      Architectures:
-        - x86_64
       Events:
         ApiEvent:
           Type: Api
