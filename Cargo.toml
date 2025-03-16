@@ -76,16 +76,18 @@ sysinfo = "0.29"
 
 [features]
 default = ["blas"]
+# Basic features
 blas = ["ndarray/blas", "ndarray-linalg", "blas-src", "openblas-src", "cblas-sys"]
-# The 'gpu' feature is currently a placeholder for future GPU support
-# When enabled, the code will use GPU-specific implementations where available
-# but will fall back to CPU implementations if actual CUDA support is not implemented
-gpu = []  # Will include CUDA dependencies when they are properly implemented
+no-blas = []
+
+# BLAS implementation features - all depend on the blas feature
 openblas-system = ["blas", "ndarray-linalg/openblas-system", "openblas-src/system"]
 netlib = ["blas", "ndarray-linalg/netlib"]
 intel-mkl = ["blas", "ndarray-linalg/intel-mkl"]
 accelerate = ["blas", "ndarray-linalg/accelerate"]
-no-blas = []
+
+# GPU feature - placeholder for future GPU support
+gpu = []  # Will include CUDA dependencies when they are properly implemented
 
 [dev-dependencies]
 # Async testing

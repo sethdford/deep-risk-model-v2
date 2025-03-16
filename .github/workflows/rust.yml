@@ -34,7 +34,7 @@ jobs:
     
     - name: Build with OpenBLAS
       if: matrix.blas == 'with-openblas'
-      run: cargo build --verbose --no-default-features --features ${{ matrix.features }}
+      run: cargo build --verbose --features ${{ matrix.features }}
     
     - name: Build without BLAS
       if: matrix.blas == 'without-blas'
@@ -44,7 +44,7 @@ jobs:
     
     - name: Run tests with OpenBLAS
       if: matrix.blas == 'with-openblas'
-      run: cargo test --verbose --no-default-features --features ${{ matrix.features }}
+      run: cargo test --verbose --features ${{ matrix.features }}
     
     - name: Run tests without BLAS
       if: matrix.blas == 'without-blas'
