@@ -57,6 +57,8 @@ fn main() {
                 
                 // Explicitly link to OpenBLAS on Linux
                 println!("cargo:rustc-link-lib=openblas");
+                println!("cargo:rustc-link-lib=cblas");
+                println!("cargo:rustc-link-lib=lapack");
             }
         }
     } else {
@@ -120,14 +122,27 @@ fn main() {
                         println!("cargo:rustc-link-search={}", path);
                         println!("cargo:warning=Found OpenBLAS at {}", path);
                         found_openblas = true;
+                        
+                        // Explicitly link to all required libraries
+                        println!("cargo:rustc-link-lib=openblas");
+                        println!("cargo:rustc-link-lib=cblas");
+                        println!("cargo:rustc-link-lib=lapack");
+                        println!("cargo:rustc-link-lib=gfortran");
                         break;
                     }
                 }
                 
                 if !found_openblas {
                     println!("cargo:warning=Could not find OpenBLAS in standard locations");
-                    println!("cargo:warning=You may need to install it: sudo apt-get install libopenblas-dev");
+                    println!("cargo:warning=You may need to install it: sudo apt-get install libopenblas-dev liblapack-dev");
                 }
+            } else if !no_blas_enabled {
+                // If no specific BLAS implementation is enabled but we're not in no-blas mode,
+                // ensure we link to the necessary libraries
+                println!("cargo:rustc-link-lib=openblas");
+                println!("cargo:rustc-link-lib=cblas");
+                println!("cargo:rustc-link-lib=lapack");
+                println!("cargo:rustc-link-lib=gfortran");
             }
         }
     }
