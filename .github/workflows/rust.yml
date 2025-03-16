@@ -77,30 +77,32 @@ jobs:
         echo "Falling back to Apple's Accelerate framework"
         cargo build --verbose --no-default-features --features accelerate
     
-    # Build examples with the specified features
+    # Build examples with the specified features - macOS with Accelerate fallback
+    - name: Build examples with Accelerate (macOS fallback)
+      if: matrix.os == 'macos-latest' && matrix.blas == 'with-blas' && steps.build.outcome == 'failure'
+      run: cargo build --verbose --no-default-features --features accelerate --examples
+    
+    # Build examples with the specified features - standard path
     - name: Build examples
-      run: |
-        if [[ "${{ matrix.os }}" == "macos-latest" && "${{ matrix.blas }}" == "with-blas" && "${{ steps.build.outcome }}" == "failure" ]]; then
-          cargo build --verbose --no-default-features --features accelerate --examples
-        else
-          cargo build --verbose --no-default-features --features ${{ matrix.features }} --examples
-        fi
+      if: ${{ !(matrix.os == 'macos-latest' && matrix.blas == 'with-blas' && steps.build.outcome == 'failure') }}
+      run: cargo build --verbose --no-default-features --features ${{ matrix.features }} --examples
     
-    # Run tests with the specified features
+    # Run tests with the specified features - macOS with Accelerate fallback
+    - name: Run tests with Accelerate (macOS fallback)
+      if: matrix.os == 'macos-latest' && matrix.blas == 'with-blas' && steps.build.outcome == 'failure'
+      run: cargo test --verbose --no-default-features --features accelerate
+    
+    # Run tests with the specified features - standard path
     - name: Run tests
-      run: |
-        if [[ "${{ matrix.os }}" == "macos-latest" && "${{ matrix.blas }}" == "with-blas" && "${{ steps.build.outcome }}" == "failure" ]]; then
-          cargo test --verbose --no-default-features --features accelerate
-        else
-          cargo test --verbose --no-default-features --features ${{ matrix.features }}
-        fi
+      if: ${{ !(matrix.os == 'macos-latest' && matrix.blas == 'with-blas' && steps.build.outcome == 'failure') }}
+      run: cargo test --verbose --no-default-features --features ${{ matrix.features }}
     
-    # Cross-feature test: ensure code that doesn't use BLAS works with BLAS enabled
+    # Cross-feature test with Accelerate (macOS fallback)
+    - name: Cross-feature test with Accelerate (macOS fallback)
+      if: matrix.blas == 'with-blas' && matrix.os == 'macos-latest' && steps.build.outcome == 'failure'
+      run: cargo test --verbose --no-default-features --features accelerate -- --test-threads=1 fallback
+    
+    # Cross-feature test - standard path
     - name: Cross-feature test (with BLAS)
-      if: matrix.blas == 'with-blas'
-      run: |
-        if [[ "${{ matrix.os }}" == "macos-latest" && "${{ steps.build.outcome }}" == "failure" ]]; then
-          cargo test --verbose --no-default-features --features accelerate -- --test-threads=1 fallback
-        else
-          cargo test --verbose --no-default-features --features ${{ matrix.features }} -- --test-threads=1 fallback
-        fi
+      if: ${{ matrix.blas == 'with-blas' && !(matrix.os == 'macos-latest' && steps.build.outcome == 'failure') }}
+      run: cargo test --verbose --no-default-features --features ${{ matrix.features }} -- --test-threads=1 fallback
