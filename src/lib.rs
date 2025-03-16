@@ -175,12 +175,11 @@ mod tests {
 }
 
 // Conditional imports based on features
-#[cfg(all(feature = "blas-enabled", not(feature = "no-blas")))]
-#[cfg(any(feature = "openblas", feature = "netlib", feature = "intel-mkl", feature = "accelerate", feature = "system"))]
+#[cfg(not(feature = "no-blas"))]
 pub use ndarray_linalg;
 
-// When no-blas is enabled or ndarray_linalg is not available, provide fallback implementations
-#[cfg(any(feature = "no-blas", not(any(feature = "openblas", feature = "netlib", feature = "intel-mkl", feature = "accelerate", feature = "system"))))]
+// When no-blas is enabled, provide fallback implementations
+#[cfg(feature = "no-blas")]
 pub mod ndarray_linalg {
     // Empty module to satisfy imports when BLAS is not available
     pub mod error {
