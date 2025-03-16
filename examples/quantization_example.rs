@@ -3,6 +3,7 @@ use ndarray::{Array2, Array};
 use ndarray_rand::RandomExt;
 use ndarray_rand::rand_distr::Uniform;
 use std::time::Instant;
+use deep_risk_model::transformer::TransformerConfig;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -30,7 +31,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  d_ff = {}", d_ff);
         println!("  n_layers = {}", n_layers);
         
-        let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
+        // Create a custom config with smaller max_seq_len
+        let mut config = TransformerConfig::new(n_assets, d_model, n_heads, d_ff, n_layers);
+        config.max_seq_len = 10; // Use a smaller max_seq_len for no-blas mode
+        
+        let model = TransformerRiskModel::with_config(config)?;
         
         println!("\nGenerating synthetic market data (reduced size):");
         println!("  n_samples = {}", n_samples);
@@ -95,7 +100,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  d_ff = {}", d_ff);
         println!("  n_layers = {}", n_layers);
         
-        let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
+        // Create a custom config with appropriate max_seq_len
+        let mut config = TransformerConfig::new(d_model, d_model, n_heads, d_ff, n_layers);
+        config.max_seq_len = 50; // Use a smaller max_seq_len than the default 100
+        
+        let model = TransformerRiskModel::with_config(config)?;
         
         // Generate synthetic market data
         let n_samples = 100;
