@@ -70,9 +70,9 @@ pub mod backtest;
 pub mod stress_testing;
 
 // GPU acceleration modules
-// pub mod gpu;
-// pub mod gpu_transformer_risk_model;
-// pub mod gpu_model;
+pub mod gpu;
+pub mod gpu_transformer_risk_model;
+pub mod gpu_model;
 
 // Model compression and optimization
 pub mod quantization;
@@ -95,9 +95,9 @@ pub mod prelude {
                                 StressTestSettings, ReportDetail, ScenarioComparison};
     
     // GPU acceleration types
-    // pub use crate::gpu::{ComputeDevice, GPUConfig};
-    // pub use crate::gpu_transformer_risk_model::GPUTransformerRiskModel;
-    // pub use crate::gpu_model::GPUDeepRiskModel;
+    pub use crate::gpu::{ComputeDevice, GPUConfig};
+    pub use crate::gpu_transformer_risk_model::GPUTransformerRiskModel;
+    pub use crate::gpu_model::GPUDeepRiskModel;
     
     // Quantization types
     pub use crate::quantization::{Quantizable, QuantizationConfig, QuantizationPrecision, Quantizer};
