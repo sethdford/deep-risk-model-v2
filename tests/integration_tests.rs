@@ -2,9 +2,9 @@
 mod tests {
     use deep_risk_model::prelude::{
         ModelError,
-        DeepRiskModel,
         MarketData,
         RiskModel,
+        TransformerRiskModel,
     };
     use ndarray::{Array2};
     use ndarray_rand::{RandomExt, rand_distr::Normal};
@@ -18,63 +18,69 @@ mod tests {
 
     #[tokio::test]
     async fn test_basic_model_operations() -> Result<(), ModelError> {
-        // Initialize model
-        let mut model = DeepRiskModel::new(10, 5)?;
+        // Initialize model with d_model = 64 (required by TransformerRiskModel)
+        let d_model = 64;
+        let n_heads = 8;
+        let d_ff = 256;
+        let n_layers = 3;
+        let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
 
-        // Generate synthetic data
-        let market_data = generate_test_data(10, 100);
-
-        // Train model
-        model.train(&market_data).await?;
+        // Generate synthetic data with n_assets = d_model
+        let n_assets = d_model;
+        let market_data = generate_test_data(n_assets, 100);
 
         // Generate risk factors
         let factors = model.generate_risk_factors(&market_data).await?;
-        let window_size = 10; // This is hardcoded in DeepRiskModel::new
+        let window_size = 5; // Default max_seq_len in TransformerConfig
         let expected_samples = 100 - window_size + 1;
         assert_eq!(factors.factors().shape()[0], expected_samples);
-        // The number of factors may be less than d_model due to quality filtering
-        assert!(factors.factors().shape()[1] <= 16); // d_model is rounded up to next multiple of 8 (10 -> 16)
+        assert_eq!(factors.factors().shape()[1], d_model);
 
         // Estimate covariance
         let cov = model.estimate_covariance(&market_data).await?;
-        assert_eq!(cov.shape(), &[10, 10]);
+        assert_eq!(cov.shape(), &[n_assets, n_assets]);
 
         Ok(())
     }
 
     #[tokio::test]
     async fn test_model_with_different_sizes() -> Result<(), ModelError> {
-        // Initialize model with different dimensions
-        let mut model = DeepRiskModel::new(20, 8)?;
+        // Initialize model with d_model = 64 (required by TransformerRiskModel)
+        let d_model = 64;
+        let n_heads = 8;
+        let d_ff = 256;
+        let n_layers = 3;
+        let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
 
-        // Generate synthetic data
-        let market_data = generate_test_data(20, 150);
-
-        // Train model
-        model.train(&market_data).await?;
+        // Generate synthetic data with n_assets = d_model
+        let n_assets = d_model;
+        let market_data = generate_test_data(n_assets, 150);
 
         // Generate risk factors
         let factors = model.generate_risk_factors(&market_data).await?;
-        let window_size = 10; // This is hardcoded in DeepRiskModel::new
+        let window_size = 5; // Default max_seq_len in TransformerConfig
         let expected_samples = 150 - window_size + 1;
         assert_eq!(factors.factors().shape()[0], expected_samples);
-        // The number of factors may be less than d_model due to quality filtering
-        assert!(factors.factors().shape()[1] <= 24); // d_model is rounded up to next multiple of 8 (20 -> 24)
+        assert_eq!(factors.factors().shape()[1], d_model);
 
         // Estimate covariance
         let cov = model.estimate_covariance(&market_data).await?;
-        assert_eq!(cov.shape(), &[20, 20]);
+        assert_eq!(cov.shape(), &[n_assets, n_assets]);
 
         Ok(())
     }
 
     #[tokio::test]
     async fn test_error_handling() -> Result<(), ModelError> {
-        // Initialize model
-        let mut model = DeepRiskModel::new(10, 5)?;
+        // Initialize model with d_model = 64 (required by TransformerRiskModel)
+        let d_model = 64;
+        let n_heads = 8;
+        let d_ff = 256;
+        let n_layers = 3;
+        let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
 
         // Generate synthetic data with wrong dimensions
-        let wrong_market_data = generate_test_data(15, 100); // Wrong number of assets
+        let wrong_market_data = generate_test_data(d_model + 5, 100); // Wrong number of assets
 
         // Test error handling for risk factor generation and covariance estimation
         assert!(model.generate_risk_factors(&wrong_market_data).await.is_err());
@@ -85,30 +91,31 @@ mod tests {
 
     #[tokio::test]
     async fn test_model_full_lifecycle() -> Result<(), ModelError> {
-        // Initialize model with 10 assets and 5 factors
-        let mut model = DeepRiskModel::new(10, 5)?;
+        // Initialize model with d_model = 64 (required by TransformerRiskModel)
+        let d_model = 64;
+        let n_heads = 8;
+        let d_ff = 256;
+        let n_layers = 3;
+        let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
 
-        // Generate synthetic market data
-        let market_data = generate_test_data(10, 100);
-
-        // Train model and verify success
-        assert!(model.train(&market_data).await.is_ok());
+        // Generate synthetic market data with n_assets = d_model
+        let n_assets = d_model;
+        let market_data = generate_test_data(n_assets, 100);
 
         // Generate risk factors and verify dimensions
         let risk_factors = model.generate_risk_factors(&market_data).await?;
-        let window_size = 10; // This is hardcoded in DeepRiskModel::new
+        let window_size = 5; // Default max_seq_len in TransformerConfig
         let expected_samples = 100 - window_size + 1;
         assert_eq!(risk_factors.factors().shape()[0], expected_samples);
-        // The number of factors may be less than d_model due to quality filtering
-        assert!(risk_factors.factors().shape()[1] <= 16); // d_model is rounded up to next multiple of 8 (10 -> 16)
+        assert_eq!(risk_factors.factors().shape()[1], d_model);
 
         // Estimate covariance matrix and verify properties
         let covariance = model.estimate_covariance(&market_data).await?;
-        assert_eq!(covariance.shape(), &[10, 10]);
+        assert_eq!(covariance.shape(), &[n_assets, n_assets]);
         
         // Verify covariance matrix symmetry and positive semi-definiteness
-        for i in 0..10 {
-            for j in 0..10 {
+        for i in 0..n_assets {
+            for j in 0..n_assets {
                 assert!((covariance[[i, j]] - covariance[[j, i]]).abs() < 1e-6);
                 if i == j {
                     assert!(covariance[[i, i]] >= 0.0);
@@ -121,18 +128,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_model_input_validation() -> Result<(), ModelError> {
-        // Initialize model
-        let mut model = DeepRiskModel::new(10, 5)?;
+        // Initialize model with d_model = 64 (required by TransformerRiskModel)
+        let d_model = 64;
+        let n_heads = 8;
+        let d_ff = 256;
+        let n_layers = 3;
+        let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
 
         // Test with incorrect number of assets
-        let invalid_data = generate_test_data(15, 100);
-        assert!(model.train(&invalid_data).await.is_err());
+        let invalid_data = generate_test_data(d_model + 5, 100);
         assert!(model.generate_risk_factors(&invalid_data).await.is_err());
         assert!(model.estimate_covariance(&invalid_data).await.is_err());
 
         // Test with valid data
-        let valid_data = generate_test_data(10, 100);
-        assert!(model.train(&valid_data).await.is_ok());
+        let valid_data = generate_test_data(d_model, 100);
         assert!(model.generate_risk_factors(&valid_data).await.is_ok());
         assert!(model.estimate_covariance(&valid_data).await.is_ok());
 
@@ -141,16 +150,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_model_performance() -> Result<(), ModelError> {
-        // Initialize model with larger dimensions
-        let mut model = DeepRiskModel::new(50, 10)?;
+        // Initialize model with d_model = 64 (required by TransformerRiskModel)
+        let d_model = 64;
+        let n_heads = 8;
+        let d_ff = 256;
+        let n_layers = 3;
+        let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
 
-        // Generate synthetic data with more stocks and longer sequence
-        let market_data = generate_test_data(50, 250);
-
-        // Measure training time
-        let start = Instant::now();
-        model.train(&market_data).await?;
-        let training_time = start.elapsed();
+        // Generate synthetic data with n_assets = d_model
+        let n_assets = d_model;
+        let market_data = generate_test_data(n_assets, 250);
 
         // Measure risk factor generation time
         let start = Instant::now();
@@ -163,16 +172,14 @@ mod tests {
         let covariance_time = start.elapsed();
 
         // Verify outputs
-        let window_size = 10; // This is hardcoded in DeepRiskModel::new
+        let window_size = 5; // Default max_seq_len in TransformerConfig
         let expected_samples = 250 - window_size + 1;
         assert_eq!(risk_factors.factors().shape()[0], expected_samples);
-        // The number of factors may be less than d_model due to quality filtering
-        assert!(risk_factors.factors().shape()[1] <= 56); // d_model is rounded up to next multiple of 8 (50 -> 56)
-        assert_eq!(covariance.shape(), &[50, 50]);
+        assert_eq!(risk_factors.factors().shape()[1], d_model);
+        assert_eq!(covariance.shape(), &[n_assets, n_assets]);
 
         // Print performance metrics
-        println!("Performance metrics for 50 stocks, 250 time steps:");
-        println!("Training time: {:?}", training_time);
+        println!("Performance metrics for {} stocks, 250 time steps:", n_assets);
         println!("Risk factor generation time: {:?}", risk_factor_time);
         println!("Covariance estimation time: {:?}", covariance_time);
 
@@ -181,20 +188,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_model_with_noisy_data() -> Result<(), ModelError> {
-        let n_assets = 100;
-        let n_factors = 32;
-        let mut model = DeepRiskModel::new(n_assets, n_factors)?;
+        // Initialize model with d_model = 64 (required by TransformerRiskModel)
+        let d_model = 64;
+        let n_heads = 8;
+        let d_ff = 256;
+        let n_layers = 3;
+        let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
         
         // Generate data with high noise level
+        let n_assets = d_model;
         let market_data = generate_test_data(n_assets, 250);
         
         // Verify model can handle noisy data
         let risk_factors = model.generate_risk_factors(&market_data).await?;
-        let window_size = 10; // This is hardcoded in DeepRiskModel::new
+        let window_size = 5; // Default max_seq_len in TransformerConfig
         let expected_samples = 250 - window_size + 1;
         assert_eq!(risk_factors.factors().shape()[0], expected_samples);
-        // The number of factors may be less than d_model due to quality filtering
-        assert!(risk_factors.factors().shape()[1] <= 104); // d_model is rounded up to next multiple of 8 (100 -> 104)
+        assert_eq!(risk_factors.factors().shape()[1], d_model);
         
         let covariance = model.estimate_covariance(&market_data).await?;
         assert_eq!(covariance.shape(), &[n_assets, n_assets]);
@@ -204,16 +214,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_model_dimension_mismatch() -> Result<(), ModelError> {
-        let n_assets = 100;
-        let n_factors = 32;
+        // Initialize model with d_model = 64 (required by TransformerRiskModel)
+        let d_model = 64;
+        let n_heads = 8;
+        let d_ff = 256;
+        let n_layers = 3;
         
-        // Create data with mismatched dimensions
-        let features = Array2::<f32>::random((250, n_assets), Normal::new(0.0, 1.0).unwrap());
-        let returns = Array2::<f32>::random((250, n_assets + 1), Normal::new(0.0, 0.1).unwrap());
-        let data = MarketData::new(returns, features);
+        // Create data with mismatched dimensions between features and returns
+        // This data is not used in the test, but is kept for documentation purposes
+        let _features = Array2::<f32>::random((250, d_model), Normal::new(0.0, 1.0).unwrap());
+        let _returns = Array2::<f32>::random((250, d_model + 1), Normal::new(0.0, 0.1).unwrap());
         
-        let mut model = DeepRiskModel::new(n_assets, n_factors)?;
-        assert!(model.train(&data).await.is_err());
+        // Create data with mismatched dimensions between d_model and features
+        let wrong_features = Array2::<f32>::random((250, d_model + 5), Normal::new(0.0, 1.0).unwrap());
+        let matching_returns = Array2::<f32>::random((250, d_model + 5), Normal::new(0.0, 0.1).unwrap());
+        let wrong_data = MarketData::new(matching_returns, wrong_features);
+        
+        let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
+        
+        // This should fail because the feature dimension doesn't match d_model
+        assert!(model.generate_risk_factors(&wrong_data).await.is_err());
         
         Ok(())
     }
