@@ -34,10 +34,11 @@ rand_distr = "0.4"
 rand_chacha = "0.3"
 num-traits = "0.2"
 
-# BLAS and OpenBLAS dependencies - now optional
+# BLAS dependencies - only included when blas feature is enabled
 ndarray-linalg = { version = "0.16", optional = true }
 blas-src = { version = "0.8", optional = true }
 openblas-src = { version = "0.10", optional = true }
+cblas-sys = { version = "0.1.4", optional = true }
 
 # Async traits
 async-trait = "0.1"
@@ -76,8 +77,15 @@ sysinfo = "0.29"
 
 [features]
 default = ["blas"]
-# Basic features
-blas = ["ndarray/blas", "ndarray-linalg", "blas-src", "openblas-src", "cblas-sys"]
+
+# Basic features - mutually exclusive
+blas = [
+    "ndarray/blas", 
+    "dep:ndarray-linalg", 
+    "dep:blas-src", 
+    "dep:openblas-src", 
+    "dep:cblas-sys"
+]
 no-blas = []
 
 # BLAS implementation features - all depend on the blas feature

@@ -39,8 +39,6 @@ jobs:
     - name: Build without BLAS
       if: matrix.blas == 'without-blas'
       run: cargo build --verbose --no-default-features --features ${{ matrix.features }}
-      env:
-        RUSTFLAGS: "-C link-arg=-Wl,--allow-multiple-definition"
     
     - name: Run tests with OpenBLAS
       if: matrix.blas == 'with-openblas'
@@ -49,5 +47,3 @@ jobs:
     - name: Run tests without BLAS
       if: matrix.blas == 'without-blas'
       run: cargo test --verbose --no-default-features --features ${{ matrix.features }}
-      env:
-        RUSTFLAGS: "-C link-arg=-Wl,--allow-multiple-definition"
