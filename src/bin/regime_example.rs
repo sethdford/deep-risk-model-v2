@@ -19,10 +19,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     
     // Create regime-aware risk model
     println!("Creating regime-aware risk model...");
-    let d_model = 10;
-    let n_heads = 4;
-    let d_ff = 128;
-    let n_layers = 2;
+    let d_model = 64;  // Updated to match TransformerRiskModel requirements
+    let n_heads = 8;
+    let d_ff = 256;
+    let n_layers = 3;
     let window_size = 20;
     
     let mut model = RegimeAwareRiskModel::new(
@@ -69,8 +69,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 /// Generate synthetic market data with regime changes
 fn generate_synthetic_data() -> Result<(MarketData, Vec<(usize, RegimeType)>), Box<dyn Error>> {
     let n_samples = 500;
-    let n_assets = 10;
-    let n_features = 10;
+    let n_assets = 64;  // Updated to match d_model
+    let n_features = 64;  // Updated to match d_model
     
     // Define regime changes
     let regime_changes = vec![
