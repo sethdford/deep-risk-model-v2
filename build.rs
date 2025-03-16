@@ -74,6 +74,9 @@ fn main() {
             if accelerate_enabled {
                 println!("cargo:warning=Using Apple's Accelerate framework for optimal performance on macOS");
                 println!("cargo:rustc-link-lib=framework=Accelerate");
+                
+                // Explicitly set the RUSTFLAGS for linking with Accelerate
+                println!("cargo:rustc-env=RUSTFLAGS=-L framework=/System/Library/Frameworks");
             } else if openblas_enabled {
                 println!("cargo:warning=Using OpenBLAS on macOS. Consider using the 'accelerate' feature for better performance");
                 
