@@ -1,8 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use deep_risk_model::{
     transformer::{TransformerConfig, Transformer, TransformerComponent},
-    TransformerRiskModel,
-    types::{RiskModel, MarketData},
+    prelude::{TransformerRiskModel, RiskModel, MarketData},
 };
 use ndarray::{Array2};
 
