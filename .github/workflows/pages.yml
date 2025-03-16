@@ -80,16 +80,26 @@ jobs:
             ls -la docs/_site
           else
             echo "_site directory not found!"
-            echo "Trying to create a simple index.html for testing:"
+            echo "Creating a simple index.html for testing:"
             mkdir -p docs/_site
             echo "<html><body><h1>Deep Risk Model Documentation</h1><p>This is a placeholder page.</p></body></html>" > docs/_site/index.html
             ls -la docs/_site
           fi
       
+      - name: Create artifact directory
+        run: |
+          mkdir -p _site
+          cp -r docs/_site/* _site/ || echo "Failed to copy from docs/_site, creating placeholder"
+          if [ ! -f "_site/index.html" ]; then
+            echo "<html><body><h1>Deep Risk Model Documentation</h1><p>This is a placeholder page.</p></body></html>" > _site/index.html
+          fi
+          echo "Contents of _site directory:"
+          ls -la _site
+      
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/_site
+          path: _site
           retention-days: 1
 
   deploy:
