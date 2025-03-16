@@ -64,6 +64,9 @@ pub enum ModelError {
 
     /// Error when numerical computation fails
     ComputationError(String),
+    
+    /// Error when numerical operations fail (e.g., singular matrix)
+    NumericalError(String),
 
     /// Other unspecified errors
     Other(String),
@@ -94,6 +97,7 @@ impl fmt::Display for ModelError {
             ModelError::Parse(err) => write!(f, "Parse error: {}", err),
             ModelError::DimensionMismatch(msg) => write!(f, "Dimension mismatch: {}", msg),
             ModelError::ComputationError(msg) => write!(f, "Computation error: {}", msg),
+            ModelError::NumericalError(msg) => write!(f, "Numerical error: {}", msg),
             ModelError::Other(msg) => write!(f, "Other error: {}", msg),
             ModelError::External(err) => write!(f, "External error: {}", err),
             ModelError::InitializationError(msg) => write!(f, "Initialization error: {}", msg),
