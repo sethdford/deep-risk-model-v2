@@ -185,12 +185,6 @@ pub mod ndarray_linalg {
     #[error("BLAS operations are not available in no-blas mode")]
     pub struct LinalgError;
     
-    impl std::fmt::Display for LinalgError {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "BLAS operations are not available in no-blas mode")
-        }
-    }
-    
     // Provide a minimal implementation of the traits and functions needed
     pub mod error {
         pub use super::LinalgError;
