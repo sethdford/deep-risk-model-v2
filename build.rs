@@ -8,6 +8,40 @@ fn main() {
         println!("cargo:warning=Building without BLAS support (pure Rust implementation)");
         println!("cargo:warning=Note: Some tests and examples requiring matrix operations on large matrices will fail");
     } else {
+        // Detect the operating system
+        let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+        
+        // Special handling for macOS
+        if target_os == "macos" {
+            println!("cargo:warning=Detected macOS, adding explicit OpenBLAS linking");
+            
+            // Try to find OpenBLAS in common locations
+            let homebrew_path = "/opt/homebrew/opt/openblas";
+            let usr_local_path = "/usr/local/opt/openblas";
+            
+            // Check if Homebrew OpenBLAS exists (common on Apple Silicon)
+            if std::path::Path::new(&format!("{}/lib", homebrew_path)).exists() {
+                println!("cargo:rustc-link-search={}/lib", homebrew_path);
+                println!("cargo:warning=Found OpenBLAS at {}", homebrew_path);
+            } else if std::path::Path::new(&format!("{}/lib", usr_local_path)).exists() {
+                println!("cargo:rustc-link-search={}/lib", usr_local_path);
+                println!("cargo:warning=Found OpenBLAS at {}", usr_local_path);
+            } else {
+                println!("cargo:warning=Could not find OpenBLAS in standard locations, using default paths");
+            }
+            
+            // Explicitly link to OpenBLAS, BLAS, and LAPACK
+            println!("cargo:rustc-link-lib=openblas");
+            println!("cargo:rustc-link-lib=blas");
+            println!("cargo:rustc-link-lib=lapack");
+            
+            // Add gfortran for LAPACK
+            println!("cargo:rustc-link-lib=gfortran");
+            
+            // Add standard math library
+            println!("cargo:rustc-link-lib=m");
+        }
+        
         // Let the *-src crates handle the linking
         // We don't need to do anything here as the BLAS implementation crates
         // will handle all the linking details for us

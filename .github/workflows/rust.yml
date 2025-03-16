@@ -45,6 +45,17 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y gfortran
     
+    # Install OpenBLAS on macOS
+    - name: Install OpenBLAS (macOS)
+      if: matrix.blas == 'with-blas' && matrix.os == 'macos-latest'
+      run: |
+        brew install openblas
+        echo "LIBRARY_PATH=$LIBRARY_PATH:/opt/homebrew/opt/openblas/lib" >> $GITHUB_ENV
+        echo "CPATH=$CPATH:/opt/homebrew/opt/openblas/include" >> $GITHUB_ENV
+        echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/homebrew/opt/openblas/lib/pkgconfig" >> $GITHUB_ENV
+        echo "OPENBLAS_HOME=/opt/homebrew/opt/openblas" >> $GITHUB_ENV
+        ls -la /opt/homebrew/opt/openblas/lib || true
+    
     # Build with the specified features
     - name: Build
       run: cargo build --verbose --no-default-features --features ${{ matrix.features }}
