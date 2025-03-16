@@ -105,7 +105,7 @@ gpu = []  # Will include CUDA dependencies when they are properly implemented
 [target.'cfg(target_os = "windows")'.dependencies]
 openblas-src = { version = "0.10", features = ["cblas", "system"], optional = true }
 
-# Ensure tests always use BLAS
+# Ensure tests always use no-blas for maximum compatibility
 [dev-dependencies.deep_risk_model]
 path = "."
 features = ["no-blas"]
@@ -130,8 +130,12 @@ mockito = "1.2"
 # Mocking
 mockall = "0.11"
 
-# BLAS dependencies for tests
+# BLAS dependencies for tests - use system feature on Windows
+[target.'cfg(not(target_os = "windows"))'.dev-dependencies]
 openblas-src = { version = "0.10", features = ["cblas"] }
+
+[target.'cfg(target_os = "windows")'.dev-dependencies]
+openblas-src = { version = "0.10", features = ["cblas", "system"] }
 
 [[bin]]
 name = "bootstrap"

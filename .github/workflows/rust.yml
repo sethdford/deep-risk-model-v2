@@ -20,13 +20,13 @@ jobs:
         include:
           - os: ubuntu-latest
             blas: default
-            features: ""
+            features: "--features openblas"
           - os: macos-latest
             blas: default
-            features: ""
+            features: "--features accelerate"
           - os: windows-latest
             blas: default
-            features: "--features system"
+            features: "--no-default-features --features system"
           - blas: no-blas
             features: "--no-default-features --features no-blas"
         exclude:
@@ -62,6 +62,7 @@ jobs:
         ./vcpkg.exe install openblas:x64-windows
         ./vcpkg.exe integrate install
         echo "VCPKG_ROOT=${{ github.workspace }}/vcpkg" >> $GITHUB_ENV
+      shell: bash
     
     # Build with the specified features
     - name: Build

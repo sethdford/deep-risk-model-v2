@@ -12,8 +12,30 @@ fn main() {
     let any_blas_feature_enabled = openblas_enabled || accelerate_enabled || 
                                   intel_mkl_enabled || system_enabled;
     
+    // Handle no-blas feature first - this takes precedence over other features
+    if no_blas_enabled {
+        println!("cargo:rustc-cfg=feature=\"no-blas\"");
+        println!("cargo:warning=Building without BLAS support (pure Rust implementation)");
+        println!("cargo:warning=Note: Some operations on large matrices will be slower");
+        
+        // If both no-blas and a BLAS implementation are enabled, warn about it and disable BLAS features
+        if any_blas_feature_enabled {
+            println!("cargo:warning=Both no-blas and a BLAS implementation are enabled. Using no-blas mode.");
+            
+            // Disable all BLAS features at the rustc level
+            println!("cargo:rustc-cfg=feature=\"!openblas\"");
+            println!("cargo:rustc-cfg=feature=\"!accelerate\"");
+            println!("cargo:rustc-cfg=feature=\"!intel-mkl\"");
+            println!("cargo:rustc-cfg=feature=\"!system\"");
+            println!("cargo:rustc-cfg=feature=\"!blas-enabled\"");
+        }
+        
+        // Early return to avoid setting any BLAS-related configurations
+        return;
+    }
+    
     // If no BLAS feature is explicitly enabled, enable the platform-specific default
-    if !any_blas_feature_enabled && !no_blas_enabled {
+    if !any_blas_feature_enabled {
         match target_os.as_str() {
             "macos" => {
                 // On macOS, use Accelerate framework by default
@@ -32,6 +54,7 @@ fn main() {
                 println!("cargo:warning=Using system BLAS via vcpkg on Windows");
                 println!("cargo:warning=Make sure you have installed OpenBLAS with vcpkg:");
                 println!("cargo:warning=  vcpkg install openblas:x64-windows");
+                println!("cargo:warning=  vcpkg integrate install");
                 
                 // Force the system feature for openblas-src on Windows
                 println!("cargo:rustc-cfg=feature=\"openblas-src/system\"");
@@ -46,36 +69,13 @@ fn main() {
                 println!("cargo:rustc-link-lib=openblas");
             }
         }
-    }
-    
-    // Handle no-blas feature
-    if no_blas_enabled {
-        println!("cargo:rustc-cfg=feature=\"no-blas\"");
-        println!("cargo:warning=Building without BLAS support (pure Rust implementation)");
-        println!("cargo:warning=Note: Some operations on large matrices will be slower");
-        
-        // If both no-blas and a BLAS implementation are enabled, warn about it
-        if any_blas_feature_enabled {
-            println!("cargo:warning=Both no-blas and a BLAS implementation are enabled. Using no-blas mode.");
-            
-            // Disable all BLAS features at the rustc level
-            if openblas_enabled {
-                println!("cargo:rustc-cfg=feature=\"!openblas\"");
-            }
-            if accelerate_enabled {
-                println!("cargo:rustc-cfg=feature=\"!accelerate\"");
-            }
-            if intel_mkl_enabled {
-                println!("cargo:rustc-cfg=feature=\"!intel-mkl\"");
-            }
-            if system_enabled {
-                println!("cargo:rustc-cfg=feature=\"!system\"");
-            }
-        }
+    } else {
+        // A specific BLAS feature is enabled
+        println!("cargo:rustc-cfg=feature=\"blas-enabled\"");
     }
     
     // Special handling for Windows - always ensure system feature is used with openblas-src
-    if target_os == "windows" && (openblas_enabled || system_enabled) && !no_blas_enabled {
+    if target_os == "windows" && (openblas_enabled || system_enabled) {
         println!("cargo:warning=On Windows, using system feature with openblas-src");
         println!("cargo:rustc-cfg=feature=\"openblas-src/system\"");
     }
@@ -125,12 +125,6 @@ fn main() {
                 
                 // Force the system feature for openblas-src on Windows
                 println!("cargo:rustc-cfg=feature=\"openblas-src/system\"");
-            } else if !no_blas_enabled {
-                println!("cargo:warning=On Windows, it's recommended to use the 'system' feature with vcpkg");
-                println!("cargo:warning=Or use the 'no-blas' feature for a pure Rust implementation");
-                
-                // Default to no-blas on Windows if no specific BLAS feature is enabled
-                println!("cargo:rustc-cfg=feature=\"no-blas\"");
             }
         },
         _ => {
