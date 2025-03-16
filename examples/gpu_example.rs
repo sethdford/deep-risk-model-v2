@@ -61,21 +61,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     
     // Try to create GPU model, handle potential BLAS unavailability
-    let mut gpu_model = match GPUTransformerRiskModel::new(d_model, n_heads, d_ff, n_layers, gpu_config.clone()) {
+    let gpu_result = GPUTransformerRiskModel::new(d_model, n_heads, d_ff, n_layers, gpu_config.clone());
+    
+    let mut gpu_model = match gpu_result {
         Ok(model) => model,
         Err(e) => {
-            if let Some(model_err) = e.downcast_ref::<ModelError>() {
-                match model_err {
-                    ModelError::UnsupportedOperation(_) => {
-                        println!("BLAS not available, using CPU-only implementation");
-                        // Fall back to CPU model
-                        TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?
-                    },
-                    _ => return Err(e),
-                }
-            } else {
-                return Err(e);
-            }
+            println!("Failed to create GPU model: {}", e);
+            println!("Using CPU-only implementation instead");
+            // Fall back to CPU model
+            TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?
         }
     };
     
