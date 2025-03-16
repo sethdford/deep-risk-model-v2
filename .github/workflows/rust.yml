@@ -18,9 +18,9 @@ jobs:
         os: [ubuntu-latest, macos-latest]
         include:
           - os: ubuntu-latest
-            features: "--features openblas"
+            features: "--features openblas --no-default-features"
           - os: macos-latest
-            features: "--features accelerate"
+            features: "--features accelerate --no-default-features"
 
     steps:
     - uses: actions/checkout@v4
@@ -51,3 +51,32 @@ jobs:
     # Run tests with the specified features
     - name: Run tests
       run: cargo test --verbose ${{ matrix.features }}
+
+  build-no-blas:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Set up Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.os }}-no-blas
+    
+    # Build with no-blas feature
+    - name: Build with no-blas
+      run: cargo build --verbose --no-default-features --features no-blas
+    
+    # Build examples with no-blas feature
+    - name: Build examples with no-blas
+      run: cargo build --verbose --no-default-features --features no-blas --examples
+    
+    # Run tests with no-blas feature
+    - name: Run tests with no-blas
+      run: cargo test --verbose --no-default-features --features no-blas

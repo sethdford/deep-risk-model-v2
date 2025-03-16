@@ -106,6 +106,7 @@ blas-src = { version = "0.8", optional = true, features = ["accelerate"] }
 # Ensure tests always use no-blas for maximum compatibility
 [dev-dependencies.deep_risk_model]
 path = "."
+default-features = false
 features = ["no-blas"]
 
 [dev-dependencies]
