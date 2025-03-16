@@ -59,20 +59,20 @@ pub mod error;
 pub mod factor_analysis;
 pub mod gru;
 pub mod model;
-pub mod regime;
-pub mod regime_risk_model;
+// pub mod regime;
+// pub mod regime_risk_model;
 pub mod transformer;
 pub mod transformer_risk_model;
 pub mod tft_risk_model;
 pub mod types;
 pub mod utils;
-pub mod backtest;
-pub mod stress_testing;
+// pub mod backtest;
+// pub mod stress_testing;
 
 // GPU acceleration modules
-pub mod gpu;
-pub mod gpu_transformer_risk_model;
-pub mod gpu_model;
+// pub mod gpu;
+// pub mod gpu_transformer_risk_model;
+// pub mod gpu_model;
 
 // Model compression and optimization
 pub mod quantization;
@@ -87,17 +87,17 @@ pub mod prelude {
     pub use crate::tft_risk_model::TFTRiskModel;
     pub use crate::types::{MarketData, RiskFactors, RiskModel, ModelConfig, MCPConfig};
     pub use crate::factor_analysis::{FactorAnalyzer, FactorQualityMetrics};
-    pub use crate::regime::{MarketRegimeDetector, RegimeType, RegimeConfig};
-    pub use crate::regime_risk_model::{RegimeAwareRiskModel, RegimeParameters};
-    pub use crate::backtest::{Backtest, BacktestResults, ScenarioGenerator, HistoricalScenarioGenerator, StressScenarioGenerator};
-    pub use crate::stress_testing::{EnhancedStressScenarioGenerator, StressTestExecutor, StressTestResults, 
-                            StressScenario, HistoricalPeriod, ScenarioCombinationSettings, 
-                            StressTestSettings, ReportDetail, ScenarioComparison};
+    // pub use crate::regime::{MarketRegimeDetector, RegimeType, RegimeConfig};
+    // pub use crate::regime_risk_model::{RegimeAwareRiskModel, RegimeParameters};
+    // pub use crate::backtest::{Backtest, BacktestResults, ScenarioGenerator, HistoricalScenarioGenerator, StressScenarioGenerator};
+    // pub use crate::stress_testing::{EnhancedStressScenarioGenerator, StressTestExecutor, StressTestResults, 
+    //                             StressScenario, HistoricalPeriod, ScenarioCombinationSettings, 
+    //                             StressTestSettings, ReportDetail, ScenarioComparison};
     
     // GPU acceleration types
-    pub use crate::gpu::{ComputeDevice, GPUConfig};
-    pub use crate::gpu_transformer_risk_model::GPUTransformerRiskModel;
-    pub use crate::gpu_model::GPUDeepRiskModel;
+    // pub use crate::gpu::{ComputeDevice, GPUConfig};
+    // pub use crate::gpu_transformer_risk_model::GPUTransformerRiskModel;
+    // pub use crate::gpu_model::GPUDeepRiskModel;
     
     // Quantization types
     pub use crate::quantization::{Quantizable, QuantizationConfig, QuantizationPrecision, Quantizer};
