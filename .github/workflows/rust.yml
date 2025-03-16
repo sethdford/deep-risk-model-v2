@@ -30,14 +30,26 @@ jobs:
       if: matrix.install_deps
       run: |
         sudo apt-get update
-        sudo apt-get install -y libopenblas-dev liblapack-dev gfortran
+        sudo apt-get install -y libopenblas-dev liblapack-dev libblas-dev libcblas-dev gfortran
+        # Create symbolic links to ensure libraries are found
+        sudo mkdir -p /usr/local/lib/
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/libopenblas.so /usr/local/lib/libopenblas.so
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/libblas.so /usr/local/lib/libblas.so
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/liblapack.so /usr/local/lib/liblapack.so
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/libcblas.so /usr/local/lib/libcblas.so
+        # Set environment variables
         echo "OPENBLAS_PATH=/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
         # List available libraries for debugging
         echo "Available libraries in /usr/lib/x86_64-linux-gnu:"
         ls -la /usr/lib/x86_64-linux-gnu/lib*blas* || true
         ls -la /usr/lib/x86_64-linux-gnu/libopenblas* || true
         ls -la /usr/lib/x86_64-linux-gnu/liblapack* || true
+        ls -la /usr/lib/x86_64-linux-gnu/libcblas* || true
+        # Check if OpenBLAS has CBLAS symbols
+        nm -D /usr/lib/x86_64-linux-gnu/libopenblas.so | grep -i cblas || true
+        # Check if CBLAS library has the required symbols
+        nm -D /usr/lib/x86_64-linux-gnu/libcblas.so | grep -i cblas_[sdcz]gemm || true
     
     - name: Set up Rust cache
       uses: actions/cache@v3
@@ -53,9 +65,15 @@ jobs:
     - name: Build with OpenBLAS
       if: matrix.blas == 'with-openblas'
       run: |
-        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu -C link-args=-L/usr/lib"
+        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu -C link-args=-L/usr/local/lib -C link-args=-L/usr/lib"
         cargo build --verbose --features ${{ matrix.features }}
-        # Build examples with the same features
+      env:
+        OPENBLAS_SYSTEM: 1
+    
+    - name: Build examples with OpenBLAS
+      if: matrix.blas == 'with-openblas'
+      run: |
+        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu -C link-args=-L/usr/local/lib -C link-args=-L/usr/lib"
         cargo build --verbose --features ${{ matrix.features }} --examples
       env:
         OPENBLAS_SYSTEM: 1
@@ -76,7 +94,7 @@ jobs:
     - name: Run tests with OpenBLAS
       if: matrix.blas == 'with-openblas'
       run: |
-        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu -C link-args=-L/usr/lib"
+        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu -C link-args=-L/usr/local/lib -C link-args=-L/usr/lib"
         cargo test --verbose --features ${{ matrix.features }}
       env:
         OPENBLAS_SYSTEM: 1

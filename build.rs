@@ -19,6 +19,7 @@ fn main() {
         // Common library paths for Linux
         println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
         println!("cargo:rustc-link-search=native=/usr/lib");
+        println!("cargo:rustc-link-search=native=/usr/lib/gcc/x86_64-linux-gnu/13");
         
         // Check if OPENBLAS_PATH is set in the environment
         if let Ok(openblas_path) = std::env::var("OPENBLAS_PATH") {
@@ -28,29 +29,60 @@ fn main() {
         if openblas_system {
             println!("cargo:warning=Building with system OpenBLAS");
             
-            // Explicitly link to system OpenBLAS and LAPACK libraries
-            // OpenBLAS includes CBLAS functionality
+            // Link to OpenBLAS in different ways to ensure all symbols are found
+            // Static linking
+            println!("cargo:rustc-link-lib=static=openblas");
+            // Dynamic linking
+            println!("cargo:rustc-link-lib=dylib=openblas");
+            // Plain linking
             println!("cargo:rustc-link-lib=openblas");
+            
+            // Explicitly link to CBLAS
+            println!("cargo:rustc-link-lib=cblas");
+            
+            // Link to BLAS and LAPACK
+            println!("cargo:rustc-link-lib=blas");
             println!("cargo:rustc-link-lib=lapack");
+            
+            // Link to gfortran for Fortran runtime
             println!("cargo:rustc-link-lib=gfortran");
             
-            // On some systems, BLAS might be a separate library
-            // but OpenBLAS should provide all BLAS functionality
-            println!("cargo:rustc-link-lib=dylib=openblas");
+            // On Ubuntu, we might need to link to libm and libpthread
+            println!("cargo:rustc-link-lib=m");
+            println!("cargo:rustc-link-lib=pthread");
         } else if netlib {
             println!("cargo:warning=Building with Netlib");
+            println!("cargo:rustc-link-lib=cblas");
             println!("cargo:rustc-link-lib=blas");
             println!("cargo:rustc-link-lib=lapack");
         } else if intel_mkl {
             println!("cargo:warning=Building with Intel MKL");
+            // MKL includes CBLAS
+            println!("cargo:rustc-link-lib=mkl_rt");
         } else if accelerate {
             println!("cargo:warning=Building with Accelerate");
+            // Accelerate includes CBLAS
+            println!("cargo:rustc-link-lib=framework=Accelerate");
         } else {
             println!("cargo:warning=Building with default BLAS");
             
-            // For default BLAS, also try to link with system libraries
+            // For default BLAS, try multiple linking approaches
+            // Try OpenBLAS first (includes CBLAS)
             println!("cargo:rustc-link-lib=openblas");
+            
+            // Explicitly try CBLAS
+            println!("cargo:rustc-link-lib=cblas");
+            
+            // Try standard BLAS and LAPACK
+            println!("cargo:rustc-link-lib=blas");
             println!("cargo:rustc-link-lib=lapack");
+            
+            // Try with gfortran runtime
+            println!("cargo:rustc-link-lib=gfortran");
+            
+            // Try with system libraries that might be needed
+            println!("cargo:rustc-link-lib=m");
+            println!("cargo:rustc-link-lib=pthread");
         }
     }
 } 
