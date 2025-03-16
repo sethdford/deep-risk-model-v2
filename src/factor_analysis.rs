@@ -297,8 +297,13 @@ impl FactorAnalyzer {
         )?;
         
         // VIF = 1 / (1 - R²)
+        // Ensure R-squared is valid (between 0 and 1)
         if r_squared >= 1.0 {
             Ok(f32::MAX)
+        } else if r_squared < 0.0 {
+            // If R-squared is negative (which can happen with poor fit),
+            // return 1.0 as the minimum VIF value
+            Ok(1.0)
         } else {
             Ok(1.0 / (1.0 - r_squared))
         }
