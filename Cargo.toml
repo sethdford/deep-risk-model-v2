@@ -101,6 +101,10 @@ no-blas = []
 # GPU feature - placeholder for future GPU support
 gpu = []  # Will include CUDA dependencies when they are properly implemented
 
+# Windows-specific default features
+[target.'cfg(target_os = "windows")'.dependencies]
+openblas-src = { version = "0.10", features = ["cblas", "system"], optional = true }
+
 # Ensure tests always use BLAS
 [dev-dependencies.deep_risk_model]
 path = "."

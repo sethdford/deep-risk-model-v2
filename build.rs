@@ -32,6 +32,9 @@ fn main() {
                 println!("cargo:warning=Using system BLAS via vcpkg on Windows");
                 println!("cargo:warning=Make sure you have installed OpenBLAS with vcpkg:");
                 println!("cargo:warning=  vcpkg install openblas:x64-windows");
+                
+                // Force the system feature for openblas-src on Windows
+                println!("cargo:rustc-cfg=feature=\"openblas-src/system\"");
             },
             _ => {
                 // On Linux and other platforms, use OpenBLAS by default
@@ -71,6 +74,12 @@ fn main() {
         }
     }
     
+    // Special handling for Windows - always ensure system feature is used with openblas-src
+    if target_os == "windows" && (openblas_enabled || system_enabled) && !no_blas_enabled {
+        println!("cargo:warning=On Windows, using system feature with openblas-src");
+        println!("cargo:rustc-cfg=feature=\"openblas-src/system\"");
+    }
+    
     // Platform-specific optimizations and configurations
     match target_os.as_str() {
         "macos" => {
@@ -108,11 +117,20 @@ fn main() {
             }
         },
         "windows" => {
-            if system_enabled {
+            if system_enabled || openblas_enabled {
                 println!("cargo:warning=Using system BLAS on Windows (requires vcpkg)");
+                println!("cargo:warning=Make sure you have installed OpenBLAS with vcpkg:");
+                println!("cargo:warning=  vcpkg install openblas:x64-windows");
+                println!("cargo:warning=  vcpkg integrate install");
+                
+                // Force the system feature for openblas-src on Windows
+                println!("cargo:rustc-cfg=feature=\"openblas-src/system\"");
             } else if !no_blas_enabled {
                 println!("cargo:warning=On Windows, it's recommended to use the 'system' feature with vcpkg");
                 println!("cargo:warning=Or use the 'no-blas' feature for a pure Rust implementation");
+                
+                // Default to no-blas on Windows if no specific BLAS feature is enabled
+                println!("cargo:rustc-cfg=feature=\"no-blas\"");
             }
         },
         _ => {
