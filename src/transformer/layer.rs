@@ -61,6 +61,41 @@ impl TransformerLayer {
         })
     }
     
+    /// Get the first feed-forward weight matrix
+    pub fn w1(&self) -> &Array2<f32> {
+        &self.w1
+    }
+    
+    /// Get the second feed-forward weight matrix
+    pub fn w2(&self) -> &Array2<f32> {
+        &self.w2
+    }
+    
+    /// Get the first layer normalization scale
+    pub fn norm1_scale(&self) -> &Array1<f32> {
+        &self.norm1_scale
+    }
+    
+    /// Get the first layer normalization bias
+    pub fn norm1_bias(&self) -> &Array1<f32> {
+        &self.norm1_bias
+    }
+    
+    /// Get the second layer normalization scale
+    pub fn norm2_scale(&self) -> &Array1<f32> {
+        &self.norm2_scale
+    }
+    
+    /// Get the second layer normalization bias
+    pub fn norm2_bias(&self) -> &Array1<f32> {
+        &self.norm2_bias
+    }
+    
+    /// Get the attention module
+    pub fn attention(&self) -> &MultiHeadAttention {
+        &self.attention
+    }
+    
     /// Apply feed-forward network
     fn feed_forward(&self, x: &Array2<f32>) -> Result<Array2<f32>, ModelError> {
         let h = x.dot(&self.w1).mapv(|x| if x > 0.0 { x } else { 0.0 });

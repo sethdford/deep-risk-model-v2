@@ -3,6 +3,7 @@ use crate::error::ModelError;
 use crate::transformer::TransformerComponent;
 use std::error::Error;
 use std::ops::AddAssign;
+use std::f32::consts::PI;
 
 /// Positional encoder for transformer models
 #[derive(Debug)]
@@ -33,6 +34,21 @@ impl PositionalEncoder {
             max_seq_len,
             encoding,
         })
+    }
+    
+    /// Get the dimension of the model
+    pub fn d_model(&self) -> usize {
+        self.d_model
+    }
+    
+    /// Get the maximum sequence length
+    pub fn max_seq_len(&self) -> usize {
+        self.max_seq_len
+    }
+    
+    /// Get the positional encoding matrix
+    pub fn encoding(&self) -> &Array2<f32> {
+        &self.encoding
     }
 }
 

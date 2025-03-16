@@ -34,6 +34,41 @@ impl MultiHeadAttention {
         Ok(attention)
     }
 
+    /// Get the model dimension
+    pub fn d_model(&self) -> usize {
+        self.d_model
+    }
+    
+    /// Get the number of attention heads
+    pub fn n_heads(&self) -> usize {
+        self.n_heads
+    }
+    
+    /// Get the dimension of each attention head
+    pub fn d_k(&self) -> usize {
+        self.d_k
+    }
+    
+    /// Get the query weight matrix
+    pub fn w_q(&self) -> &Array2<f32> {
+        &self.w_q
+    }
+    
+    /// Get the key weight matrix
+    pub fn w_k(&self) -> &Array2<f32> {
+        &self.w_k
+    }
+    
+    /// Get the value weight matrix
+    pub fn w_v(&self) -> &Array2<f32> {
+        &self.w_v
+    }
+    
+    /// Get the output weight matrix
+    pub fn w_o(&self) -> &Array2<f32> {
+        &self.w_o
+    }
+
     fn init_weights(&mut self) -> Result<(), ModelError> {
         use ndarray_rand::RandomExt;
         use ndarray_rand::rand_distr::Normal;
