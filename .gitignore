@@ -1,5 +1,28 @@
-/target/
+# Rust build artifacts
+/target
+**/*.rs.bk
+Cargo.lock
+
+# SAM build artifacts
+.aws-sam/
+samconfig.toml
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS files
 .DS_Store
+
+# Environment variables
+.env
+.env.*
+
+# Temporary files
+*.tmp
+*.log
 
 # SpecStory artifacts
 .specstory/

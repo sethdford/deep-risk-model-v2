@@ -1,0 +1,17 @@
+name: dev
+on:
+  workflow_dispatch:
+
+environment:
+  name: dev
+  url: ${{ steps.deployment.outputs.env_url }}
+
+# Protection rules
+protection_rules:
+  required_reviewers:
+    - sethdford  # Replace with your GitHub username
+
+# Environment variables
+env:
+  ENVIRONMENT: dev
+  LOG_LEVEL: debug 

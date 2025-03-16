@@ -1,0 +1,95 @@
+name: Deploy SAM Application
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  SAM_CLI_TELEMETRY: 0
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Set up Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        key: sam-deploy-${{ github.event.inputs.environment }}
+    
+    - name: Install OpenBLAS dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libopenblas-dev gfortran
+    
+    - name: Build Lambda binary
+      run: |
+        cargo build --release --features openblas --no-default-features --bin bootstrap
+        mkdir -p .aws-sam/build/DeepRiskModelFunction/
+        cp target/release/bootstrap .aws-sam/build/DeepRiskModelFunction/
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+    
+    - name: Setup SAM CLI
+      uses: aws-actions/setup-sam@v2
+    
+    - name: SAM Validate
+      run: sam validate
+    
+    - name: SAM Build
+      run: sam build --use-container
+    
+    - name: Create Deployment
+      id: deployment
+      uses: bobheadxi/deployments@v1
+      with:
+        step: start
+        token: ${{ secrets.GITHUB_TOKEN }}
+        env: ${{ github.event.inputs.environment }}
+        ref: ${{ github.head_ref }}
+    
+    - name: SAM Deploy
+      run: |
+        sam deploy \
+          --stack-name deep-risk-model-${{ github.event.inputs.environment }} \
+          --no-confirm-changeset \
+          --no-fail-on-empty-changeset \
+          --parameter-overrides Environment=${{ github.event.inputs.environment }} \
+          --capabilities CAPABILITY_IAM
+    
+    - name: Output API Gateway URL
+      run: |
+        API_URL=$(aws cloudformation describe-stacks --stack-name deep-risk-model-${{ github.event.inputs.environment }} --query "Stacks[0].Outputs[?OutputKey=='DeepRiskModelApi'].OutputValue" --output text)
+        echo "API Gateway URL: $API_URL"
+        echo "API_URL=$API_URL" >> $GITHUB_ENV
+    
+    - name: Create GitHub Environment URL
+      uses: bobheadxi/deployments@v1
+      with:
+        step: finish
+        token: ${{ secrets.GITHUB_TOKEN }}
+        env: ${{ github.event.inputs.environment }}
+        deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+        env_url: ${{ env.API_URL }} 

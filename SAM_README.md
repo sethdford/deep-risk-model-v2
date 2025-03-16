@@ -1,0 +1,105 @@
+# Deep Risk Model - SAM Deployment
+
+This project contains the AWS Serverless Application Model (SAM) configuration for deploying the Deep Risk Model as a Lambda function with API Gateway.
+
+## Prerequisites
+
+- [AWS CLI](https://aws.amazon.com/cli/)
+- [SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
+- [Rust](https://www.rust-lang.org/tools/install)
+- OpenBLAS development libraries (for Linux)
+
+## Local Development
+
+### Building the Application
+
+```bash
+# Build with OpenBLAS support (Linux)
+cargo build --release --features openblas --no-default-features
+
+# Build with Accelerate support (macOS)
+cargo build --release --features accelerate --no-default-features
+```
+
+### Testing the Application
+
+```bash
+# Run tests with OpenBLAS support (Linux)
+cargo test --features openblas --no-default-features
+
+# Run tests with Accelerate support (macOS)
+cargo test --features accelerate --no-default-features
+```
+
+## Deployment
+
+### Manual Deployment
+
+1. Build the Lambda binary:
+
+```bash
+cargo build --release --features openblas --no-default-features --bin bootstrap
+mkdir -p .aws-sam/build/DeepRiskModelFunction/
+cp target/release/bootstrap .aws-sam/build/DeepRiskModelFunction/
+```
+
+2. Validate the SAM template:
+
+```bash
+sam validate
+```
+
+3. Build the SAM application:
+
+```bash
+sam build --use-container
+```
+
+4. Deploy the SAM application:
+
+```bash
+sam deploy --guided
+```
+
+### GitHub Actions Deployment
+
+This project includes a GitHub Actions workflow for automated deployment. To use it:
+
+1. Set up the following secrets in your GitHub repository:
+   - `AWS_ACCESS_KEY_ID`: Your AWS access key ID
+   - `AWS_SECRET_ACCESS_KEY`: Your AWS secret access key
+   - `AWS_REGION`: The AWS region to deploy to
+
+2. Go to the "Actions" tab in your GitHub repository and select the "Deploy SAM Application" workflow.
+
+3. Click "Run workflow" and select the environment to deploy to (dev, staging, or prod).
+
+## API Usage
+
+Once deployed, the API will be available at the URL provided in the CloudFormation outputs. You can use it as follows:
+
+```bash
+curl -X POST https://your-api-gateway-url/Prod/risk-factors \
+  -H "Content-Type: application/json" \
+  -d '{
+    "features": [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
+    "returns": [[0.01, 0.02, 0.03], [0.04, 0.05, 0.06]]
+  }'
+```
+
+The API will return a JSON response with the risk factors and covariance matrix:
+
+```json
+{
+  "factors": [...],
+  "covariance": [...]
+}
+```
+
+## Cleanup
+
+To delete the deployed application:
+
+```bash
+sam delete --stack-name deep-risk-model-dev
+``` 

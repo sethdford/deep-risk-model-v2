@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Deep Risk Model - A serverless application for financial risk modeling
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        RUST_BACKTRACE: 1
+
+Resources:
+  DeepRiskModelFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: bootstrap
+      Runtime: provided.al2
+      Architectures:
+        - x86_64
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /risk-factors
+            Method: post
+      Environment:
+        Variables:
+          RUST_LOG: info
+      Policies:
+        - AWSLambdaBasicExecutionRole
+
+  DeepRiskModelApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: "'POST, OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+Outputs:
+  DeepRiskModelFunction:
+    Description: "Deep Risk Model Lambda Function ARN"
+    Value: !GetAtt DeepRiskModelFunction.Arn
+  DeepRiskModelApi:
+    Description: "API Gateway endpoint URL for Prod stage for Deep Risk Model function"
+    Value: !Sub "https://${DeepRiskModelApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/risk-factors"
+  DeepRiskModelFunctionRef:
+    Description: "Deep Risk Model Lambda Function"
+    Value: !Ref DeepRiskModelFunction 
