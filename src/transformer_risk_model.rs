@@ -113,7 +113,7 @@ impl TransformerRiskModel {
         }
         
         // Positional encoder parameters
-        total += self.pos_encoder.encoding_matrix().len();
+        total += self.pos_encoder.encoding().len();
         
         total
     }
@@ -504,7 +504,7 @@ impl Quantizable for TransformerRiskModel {
         }
         
         // Quantize positional encoder parameters
-        let pos_encoding_view = self.pos_encoder.encoding_matrix().view();
+        let pos_encoding_view = self.pos_encoder.encoding().view();
         let pos_encoding_quantized = quantizer.quantize_tensor(&pos_encoding_view)?;
         quantized_weights.insert("positional_encoding".to_string(), pos_encoding_quantized);
         
