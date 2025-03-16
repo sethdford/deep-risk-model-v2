@@ -18,24 +18,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("This example is primarily for demonstration purposes.");
         
         // Use smaller dimensions for no-blas mode
-        let d_model = 16;
-        let n_heads = 2;
-        let d_ff = 32;
+        let d_model = 6;  // Reduced from 16 to avoid matrix inversion issues
+        let n_heads = 1;  // Reduced from 2
+        let d_ff = 8;     // Reduced from 32
         let n_layers = 1;
-        let n_samples = 30;
-        let n_assets = d_model;
+        let n_samples = 10; // Reduced from 30
+        let n_assets = 3;   // Keep at 3 for no-blas mode (max matrix size for inversion)
         
         println!("Creating transformer risk model with reduced dimensions for no-blas mode:");
         println!("  d_model = {}", d_model);
         println!("  n_heads = {}", n_heads);
         println!("  d_ff = {}", d_ff);
         println!("  n_layers = {}", n_layers);
+        println!("  n_assets = {}", n_assets);
         
         // Create a custom config with smaller max_seq_len
         let mut config = TransformerConfig::new(n_assets, d_model, n_heads, d_ff, n_layers);
-        config.max_seq_len = 10; // Use a smaller max_seq_len for no-blas mode
+        config.max_seq_len = 2; // Use a very small max_seq_len for no-blas mode
         
-        let model = TransformerRiskModel::with_config(config)?;
+        let mut model = TransformerRiskModel::with_config(config)?;
         
         println!("\nGenerating synthetic market data (reduced size):");
         println!("  n_samples = {}", n_samples);
@@ -45,40 +46,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let returns = Array::random((n_samples, n_assets), Uniform::new(-0.05, 0.05));
         let market_data = MarketData::new(returns, features);
         
-        // Measure full precision model performance
-        println!("\nRunning full precision model...");
-        
+        // Measure training performance
+        println!("\nTraining model...");
         let start = Instant::now();
-        let full_precision_factors = model.generate_risk_factors(&market_data).await?;
-        let full_precision_duration = start.elapsed();
+        model.train(&market_data).await?;
+        let training_duration = start.elapsed();
+        println!("  Training time: {:?}", training_duration);
         
-        println!("  Inference time: {:?}", full_precision_duration);
+        println!("\nNote: Skipping risk factor generation and covariance estimation");
+        println!("These operations require matrix operations that are limited in no-blas mode");
+        println!("For a complete example, please run with BLAS support enabled");
         
-        // Run the model again to get baseline performance
-        println!("\nRunning model again for baseline performance...");
-        let start = Instant::now();
-        let baseline_factors = model.generate_risk_factors(&market_data).await?;
-        let baseline_duration = start.elapsed();
-        
-        println!("  Inference time: {:?}", baseline_duration);
-        
-        // Calculate error between runs (should be minimal)
-        let baseline_factors_data = baseline_factors.factors();
-        let fp_factors = full_precision_factors.factors();
-        
-        let mut baseline_mse = 0.0;
-        for i in 0..fp_factors.shape()[0] {
-            for j in 0..fp_factors.shape()[1] {
-                let diff = fp_factors[[i, j]] - baseline_factors_data[[i, j]];
-                baseline_mse += diff * diff;
-            }
-        }
-        baseline_mse /= (fp_factors.shape()[0] * fp_factors.shape()[1]) as f32;
-        println!("  Baseline MSE between runs: {:.6}", baseline_mse);
-        
-        // Print summary
         println!("\nSummary:");
-        println!("  Baseline accuracy (MSE): {:.6}", baseline_mse);
         println!("  Running without BLAS support (pure Rust implementation)");
         println!("\nTo run with BLAS support for better performance:");
         println!("  cargo run --example quantization_example --features openblas");
@@ -104,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut config = TransformerConfig::new(d_model, d_model, n_heads, d_ff, n_layers);
         config.max_seq_len = 50; // Use a smaller max_seq_len than the default 100
         
-        let model = TransformerRiskModel::with_config(config)?;
+        let mut model = TransformerRiskModel::with_config(config)?;
         
         // Generate synthetic market data
         let n_samples = 100;
