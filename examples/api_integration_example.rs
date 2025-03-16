@@ -130,53 +130,99 @@ async fn test_performance(n_assets: usize, n_factors: usize, market_data: &Marke
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create synthetic market data
-    let n_samples = 100;
-    let n_assets = 10;
-    let returns = Array2::from_shape_vec((n_samples, n_assets), vec![0.0; n_samples * n_assets])?;
-    let features = Array2::from_shape_vec((n_samples, n_assets), vec![0.0; n_samples * n_assets])?;
-    let market_data = MarketData::new(returns, features);
+    // Set dimensions based on whether we're using BLAS or not
+    #[cfg(feature = "no-blas")]
+    {
+        println!("Running in no-blas mode with reduced dimensions");
+        println!("Note: Performance will be significantly slower without BLAS");
+        
+        // Use smaller dimensions for no-blas mode
+        let n_samples = 30;
+        let n_assets = 5;
+        let n_factors = 3;
+        
+        // Create synthetic market data with smaller dimensions
+        let returns = Array2::from_shape_vec((n_samples, n_assets), vec![0.0; n_samples * n_assets])?;
+        let features = Array2::from_shape_vec((n_samples, n_assets), vec![0.0; n_samples * n_assets])?;
+        let market_data = MarketData::new(returns, features);
 
-    // Initialize model
-    let mut model = DeepRiskModel::new(n_assets, 5)?;
+        // Initialize model with smaller dimensions
+        let mut model = DeepRiskModel::new(n_assets, n_factors)?;
 
-    // Basic model operations
-    println!("Training model...");
-    let start = Instant::now();
-    model.train(&market_data).await?;
-    println!("Training completed in {:?}", start.elapsed());
+        // Basic model operations
+        println!("Training model...");
+        let start = Instant::now();
+        model.train(&market_data).await?;
+        println!("Training completed in {:?}", start.elapsed());
 
-    println!("\nGenerating risk factors...");
-    let start = Instant::now();
-    let factors = model.generate_risk_factors(&market_data).await?;
-    println!("Risk factors generated in {:?}", start.elapsed());
-    println!("Risk factors shape: {:?}", factors.factors().shape());
+        println!("\nGenerating risk factors...");
+        let start = Instant::now();
+        let factors = model.generate_risk_factors(&market_data).await?;
+        println!("Risk factors generated in {:?}", start.elapsed());
+        println!("Risk factors shape: {:?}", factors.factors().shape());
 
-    println!("\nEstimating covariance...");
-    let start = Instant::now();
-    let covariance = model.estimate_covariance(&market_data).await?;
-    println!("Covariance estimated in {:?}", start.elapsed());
-    println!("Covariance shape: {:?}", covariance.shape());
-
-    // Error handling example
-    println!("\nTesting error handling with incorrect data...");
-    let incorrect_returns = Array2::from_shape_vec((50, 5), vec![0.0; 250])?;
-    let incorrect_features = Array2::from_shape_vec((50, 5), vec![0.0; 250])?;
-    let incorrect_market_data = MarketData::new(incorrect_returns, incorrect_features);
-
-    match model.train(&incorrect_market_data).await {
-        Ok(_) => println!("Training succeeded (unexpected)"),
-        Err(e) => println!("Training failed as expected: {}", e),
+        println!("\nEstimating covariance...");
+        let start = Instant::now();
+        let covariance = model.estimate_covariance(&market_data).await?;
+        println!("Covariance estimated in {:?}", start.elapsed());
+        println!("Covariance shape: {:?}", covariance.shape());
+        
+        println!("\nTo run with BLAS support for better performance:");
+        println!("  cargo run --example api_integration_example --features openblas");
+        
+        return Ok(());
     }
+    
+    #[cfg(not(feature = "no-blas"))]
+    {
+        // Create synthetic market data
+        let n_samples = 100;
+        let n_assets = 10;
+        let returns = Array2::from_shape_vec((n_samples, n_assets), vec![0.0; n_samples * n_assets])?;
+        let features = Array2::from_shape_vec((n_samples, n_assets), vec![0.0; n_samples * n_assets])?;
+        let market_data = MarketData::new(returns, features);
 
-    match model.generate_risk_factors(&incorrect_market_data).await {
-        Ok(_) => println!("Risk factor generation succeeded (unexpected)"),
-        Err(e) => println!("Risk factor generation failed as expected: {}", e),
-    }
+        // Initialize model
+        let mut model = DeepRiskModel::new(n_assets, 5)?;
 
-    match model.estimate_covariance(&incorrect_market_data).await {
-        Ok(_) => println!("Covariance estimation succeeded (unexpected)"),
-        Err(e) => println!("Covariance estimation failed as expected: {}", e),
+        // Basic model operations
+        println!("Training model...");
+        let start = Instant::now();
+        model.train(&market_data).await?;
+        println!("Training completed in {:?}", start.elapsed());
+
+        println!("\nGenerating risk factors...");
+        let start = Instant::now();
+        let factors = model.generate_risk_factors(&market_data).await?;
+        println!("Risk factors generated in {:?}", start.elapsed());
+        println!("Risk factors shape: {:?}", factors.factors().shape());
+
+        println!("\nEstimating covariance...");
+        let start = Instant::now();
+        let covariance = model.estimate_covariance(&market_data).await?;
+        println!("Covariance estimated in {:?}", start.elapsed());
+        println!("Covariance shape: {:?}", covariance.shape());
+
+        // Error handling example
+        println!("\nTesting error handling with incorrect data...");
+        let incorrect_returns = Array2::from_shape_vec((50, 5), vec![0.0; 250])?;
+        let incorrect_features = Array2::from_shape_vec((50, 5), vec![0.0; 250])?;
+        let incorrect_market_data = MarketData::new(incorrect_returns, incorrect_features);
+
+        match model.train(&incorrect_market_data).await {
+            Ok(_) => println!("Training succeeded (unexpected)"),
+            Err(e) => println!("Training failed as expected: {}", e),
+        }
+
+        match model.generate_risk_factors(&incorrect_market_data).await {
+            Ok(_) => println!("Risk factor generation succeeded (unexpected)"),
+            Err(e) => println!("Risk factor generation failed as expected: {}", e),
+        }
+
+        match model.estimate_covariance(&incorrect_market_data).await {
+            Ok(_) => println!("Covariance estimation succeeded (unexpected)"),
+            Err(e) => println!("Covariance estimation failed as expected: {}", e),
+        }
     }
 
     Ok(())

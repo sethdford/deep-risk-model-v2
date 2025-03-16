@@ -2,10 +2,14 @@ fn main() {
     // Check if the no-blas feature is enabled
     let no_blas = std::env::var("CARGO_FEATURE_NO_BLAS").is_ok();
     
+    // Check if any BLAS implementation is enabled
+    let blas_enabled = std::env::var("CARGO_FEATURE_BLAS_ENABLED").is_ok();
+    
     // Detect the operating system
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     let is_windows = target_os == "windows";
     
+    // If no-blas is enabled, it takes precedence over any BLAS implementation
     if no_blas {
         // If no-blas is enabled, we don't want to link against any BLAS libraries
         println!("cargo:rustc-cfg=feature=\"no-blas\"");
@@ -14,7 +18,13 @@ fn main() {
         
         // Explicitly disable any BLAS-related linking
         println!("cargo:rustc-cfg=feature=\"no-blas-linking\"");
-    } else {
+        
+        // If both no-blas and a BLAS implementation are enabled, warn about it
+        if blas_enabled {
+            println!("cargo:warning=Both no-blas and a BLAS implementation are enabled. Using no-blas mode.");
+            println!("cargo:rustc-cfg=feature=\"no-blas-override\"");
+        }
+    } else if blas_enabled {
         // Check if we're using Accelerate
         let use_accelerate = std::env::var("CARGO_FEATURE_ACCELERATE").is_ok();
         
@@ -23,12 +33,12 @@ fn main() {
             // On Windows, we need to use the system feature with vcpkg or no-blas
             let use_system = std::env::var("CARGO_FEATURE_SYSTEM").is_ok();
             
-            if !use_system && !no_blas {
+            if !use_system {
                 println!("cargo:warning=On Windows, you must use either the 'system' feature with vcpkg or the 'no-blas' feature");
                 println!("cargo:warning=Defaulting to no-blas mode for this build");
                 println!("cargo:rustc-cfg=feature=\"no-blas\"");
                 println!("cargo:rustc-cfg=feature=\"no-blas-linking\"");
-            } else if use_system {
+            } else {
                 println!("cargo:warning=Using system BLAS via vcpkg on Windows");
             }
         }
@@ -116,6 +126,8 @@ fn main() {
             println!("cargo:warning=Building with Intel MKL support");
         } else if std::env::var("CARGO_FEATURE_ACCELERATE").is_ok() {
             println!("cargo:warning=Building with Accelerate support");
+        } else if std::env::var("CARGO_FEATURE_SYSTEM").is_ok() {
+            println!("cargo:warning=Building with system BLAS support");
         } else {
             println!("cargo:warning=Building with default BLAS implementation (OpenBLAS)");
             println!("cargo:warning=If you encounter linking errors, try specifying a BLAS implementation explicitly:");
@@ -131,6 +143,12 @@ fn main() {
                 println!("cargo:warning=  cargo build --features no-blas");
             }
         }
+    } else {
+        // Neither no-blas nor any BLAS implementation is enabled
+        // This shouldn't happen with our default feature, but just in case
+        println!("cargo:warning=No BLAS implementation or no-blas feature is enabled. Defaulting to no-blas mode.");
+        println!("cargo:rustc-cfg=feature=\"no-blas\"");
+        println!("cargo:rustc-cfg=feature=\"no-blas-linking\"");
     }
     
     // Check if we're running tests

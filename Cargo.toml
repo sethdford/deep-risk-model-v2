@@ -82,13 +82,16 @@ sysinfo = "0.29"
 default = ["openblas"]
 
 # Main feature flags - choose one BLAS implementation
-openblas = ["ndarray/blas", "ndarray-linalg", "dep:openblas-src"]
-netlib = ["ndarray/blas", "ndarray-linalg", "dep:netlib-src"]
-intel-mkl = ["ndarray/blas", "ndarray-linalg", "dep:intel-mkl-src"]
-accelerate = ["ndarray/blas", "ndarray-linalg", "dep:accelerate-src"]
+openblas = ["ndarray/blas", "ndarray-linalg", "dep:openblas-src", "blas-enabled"]
+netlib = ["ndarray/blas", "ndarray-linalg", "dep:netlib-src", "blas-enabled"]
+intel-mkl = ["ndarray/blas", "ndarray-linalg", "dep:intel-mkl-src", "blas-enabled"]
+accelerate = ["ndarray/blas", "ndarray-linalg", "dep:accelerate-src", "blas-enabled"]
 
 # System BLAS - use pre-installed BLAS libraries (required for Windows)
-system = ["ndarray/blas", "ndarray-linalg", "openblas-src/system"]
+system = ["ndarray/blas", "ndarray-linalg", "openblas-src/system", "blas-enabled"]
+
+# Internal feature to track if any BLAS implementation is enabled
+blas-enabled = []
 
 # No BLAS support - pure Rust implementation
 no-blas = []
