@@ -47,6 +47,35 @@ pub struct TransformerConfig {
     pub hidden_size: usize,
 }
 
+impl TransformerConfig {
+    /// Creates a new TransformerConfig with the specified parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `n_assets` - Number of assets (used for setting appropriate dimensions)
+    /// * `d_model` - Dimension of the model's hidden state
+    /// * `n_heads` - Number of attention heads in multi-head attention
+    /// * `d_ff` - Dimension of the feed-forward network
+    /// * `n_layers` - Number of transformer layers
+    ///
+    /// # Returns
+    ///
+    /// A new TransformerConfig with the specified parameters and reasonable defaults for other fields.
+    pub fn new(n_assets: usize, d_model: usize, n_heads: usize, d_ff: usize, n_layers: usize) -> Self {
+        Self {
+            n_heads,
+            d_model,
+            d_ff,
+            n_layers,
+            dropout: 0.1,
+            max_seq_len: 100,
+            num_static_features: n_assets,
+            num_temporal_features: n_assets,
+            hidden_size: d_model / 2,
+        }
+    }
+}
+
 impl Default for TransformerConfig {
     fn default() -> Self {
         Self {

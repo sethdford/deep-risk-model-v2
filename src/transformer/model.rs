@@ -15,8 +15,8 @@ impl Transformer {
     pub fn new(config: TransformerConfig) -> Result<Self, ModelError> {
         let mut layers = Vec::with_capacity(config.n_layers);
         
-        for _ in 0..config.n_layers {
-            layers.push(TransformerLayer::new(config.d_model, config.d_ff, config.n_heads)?);
+        for i in 0..config.n_layers {
+            layers.push(TransformerLayer::new(config.d_model, config.n_heads, config.d_ff, config.dropout)?);
         }
         
         Ok(Self { layers, config })

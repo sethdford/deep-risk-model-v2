@@ -2,7 +2,7 @@ use deep_risk_model::prelude::{
     MarketData, RegimeAwareRiskModel, RegimeConfig, RegimeType, RegimeParameters,
     Backtest, EnhancedStressScenarioGenerator, StressTestExecutor, StressTestSettings,
     ReportDetail, StressScenario, HistoricalPeriod, ScenarioCombinationSettings,
-    ScenarioGenerator
+    ScenarioGenerator, TransformerConfig
 };
 use ndarray::{Array2, Array1};
 use ndarray_rand::RandomExt;
@@ -19,15 +19,22 @@ async fn test_stress_testing_integration() -> Result<(), Box<dyn std::error::Err
     let n_layers = 1;
     let window_size = 10;
     
-    let mut model = RegimeAwareRiskModel::with_config(
-        d_model, n_heads, d_ff, n_layers, window_size,
-        RegimeConfig {
-            n_regimes: 2,
-            max_iter: 100,
-            tol: 1e-4,
-            random_seed: Some(42),
-            min_prob: 0.1,
-        }
+    // Create a custom transformer config with smaller max_seq_len
+    let transformer_config = TransformerConfig {
+        d_model,
+        n_heads,
+        d_ff,
+        n_layers,
+        dropout: 0.1,
+        max_seq_len: 50, // Set to match the backtest window size
+        num_static_features: 0,
+        num_temporal_features: 5,
+        hidden_size: 16,
+    };
+    
+    // Create the model with the custom transformer config
+    let mut model = RegimeAwareRiskModel::with_transformer_config(
+        d_model, n_heads, d_ff, n_layers, window_size, transformer_config
     )?;
     
     // Set up regime parameters

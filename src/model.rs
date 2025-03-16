@@ -4,7 +4,8 @@ use ndarray::{Array1, Array2};
 use async_trait::async_trait;
 use crate::error::ModelError;
 use crate::types::{MarketData, RiskFactors, RiskModel};
-use crate::transformer_risk_model::TransformerRiskModel;
+use crate::transformer::TransformerConfig;
+use crate::prelude::TransformerRiskModel;
 use crate::factor_analysis::{FactorAnalyzer, FactorQualityMetrics};
 
 /// Deep learning model for risk factor generation and covariance estimation.
@@ -58,25 +59,24 @@ pub struct DeepRiskModel {
 
 impl DeepRiskModel {
     /// Create a new deep risk model
-    pub fn new(n_assets: usize, n_factors: usize) -> Result<Self, ModelError> {
-        // Use a d_model that matches the expected value (64)
-        let d_model = 64;
-        let n_heads = 8;
-        let d_ff = 256;
-        let n_layers = 3;
-        
-        let transformer = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
-        
-        // Initialize factor analyzer with default parameters
-        let factor_analyzer = FactorAnalyzer::new(
-            0.1,  // min_explained_variance
-            5.0,  // max_vif
-            1.96, // significance_level (95% confidence)
-        );
+    pub fn new(d_model: usize, max_seq_len: usize) -> Result<Self, ModelError> {
+        let transformer_config = TransformerConfig {
+            d_model,
+            max_seq_len,
+            n_heads: 4,
+            d_ff: 128,
+            n_layers: 2,
+            dropout: 0.1,
+            num_static_features: 10,
+            num_temporal_features: 10,
+            hidden_size: 32,
+        };
+        let transformer = TransformerRiskModel::with_config(transformer_config)?;
+        let factor_analyzer = FactorAnalyzer::new(0.5, 5.0, 0.05);
         
         Ok(Self {
-            n_assets,
-            n_factors,
+            n_assets: 64,
+            n_factors: 5,
             transformer,
             factor_analyzer,
         })

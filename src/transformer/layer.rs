@@ -16,6 +16,7 @@ impl From<NormalError> for ModelError {
 pub struct TransformerLayer {
     d_model: usize,
     d_ff: usize,
+    dropout: f32,
     attention: MultiHeadAttention,
     w1: Array2<f32>,
     w2: Array2<f32>,
@@ -27,7 +28,18 @@ pub struct TransformerLayer {
 
 impl TransformerLayer {
     /// Create a new transformer layer
-    pub fn new(d_model: usize, d_ff: usize, n_heads: usize) -> Result<Self, ModelError> {
+    ///
+    /// # Arguments
+    ///
+    /// * `d_model` - Dimension of the model's hidden state
+    /// * `n_heads` - Number of attention heads
+    /// * `d_ff` - Dimension of the feed-forward network
+    /// * `dropout` - Dropout rate for regularization
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, ModelError>` - New transformer layer or error if initialization fails
+    pub fn new(d_model: usize, n_heads: usize, d_ff: usize, dropout: f32) -> Result<Self, ModelError> {
         let attention = MultiHeadAttention::new(d_model, n_heads)?;
         
         use ndarray_rand::RandomExt;
@@ -47,10 +59,11 @@ impl TransformerLayer {
         let norm1_bias = Array1::zeros(d_model);
         let norm2_scale = Array1::ones(d_model);
         let norm2_bias = Array1::zeros(d_model);
-
+        
         Ok(Self {
             d_model,
             d_ff,
+            dropout,
             attention,
             w1,
             w2,
@@ -178,7 +191,7 @@ mod tests {
         let n_heads = 8;
         let batch_size = 16;
         
-        let layer = TransformerLayer::new(d_model, d_ff, n_heads)?;
+        let layer = TransformerLayer::new(d_model, n_heads, d_ff, 0.1)?;
         let input = Array2::zeros((batch_size, d_model));
         
         let output = layer.forward(&input)?;
@@ -192,7 +205,7 @@ mod tests {
         use ndarray_rand::RandomExt;
         use ndarray_rand::rand_distr::Normal;
 
-        let layer = TransformerLayer::new(64, 256, 8)?;
+        let layer = TransformerLayer::new(64, 8, 256, 0.1)?;
         let batch_size = 10;
         
         // Use random data instead of ones to get meaningful variance

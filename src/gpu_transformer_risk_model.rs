@@ -9,6 +9,8 @@ use crate::transformer::{
 };
 use crate::types::{MarketData, RiskFactors, RiskModel};
 use crate::gpu::{ComputeDevice, GPUConfig, compute_covariance};
+use ndarray_rand::RandomExt;
+use ndarray_rand::rand_distr::Normal;
 
 /// GPU-accelerated transformer-based risk model for financial time series analysis.
 /// 
@@ -33,6 +35,38 @@ pub struct GPUTransformerRiskModel {
 }
 
 impl GPUTransformerRiskModel {
+    /// Creates a new GPU-accelerated transformer-based risk model with the specified configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Configuration for the transformer model
+    /// * `gpu_config` - GPU configuration
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, ModelError>` - New GPU transformer risk model or error if initialization fails
+    pub fn with_config(config: TransformerConfig, gpu_config: GPUConfig) -> Result<Self, ModelError> {
+        let mut layers = Vec::with_capacity(config.n_layers);
+        
+        for _ in 0..config.n_layers {
+            layers.push(TransformerLayer::new(
+                config.d_model,
+                config.n_heads,
+                config.d_ff,
+                config.dropout,
+            )?);
+        }
+        
+        let pos_encoder = PositionalEncoder::new(config.d_model, config.max_seq_len);
+        
+        Ok(Self {
+            layers,
+            pos_encoder,
+            config,
+            gpu_config,
+        })
+    }
+
     /// Creates a new GPU-accelerated transformer-based risk model with the specified architecture.
     /// 
     /// # Arguments
@@ -57,26 +91,33 @@ impl GPUTransformerRiskModel {
             d_model,
             n_heads,
             d_ff,
-            dropout: 0.1,
             n_layers,
-            max_seq_len: 5,
-            num_static_features: 5,
-            num_temporal_features: 10,
-            hidden_size: 32,
+            dropout: 0.1,
+            max_seq_len: 100,
+            num_static_features: d_model,
+            num_temporal_features: d_model,
+            hidden_size: d_model / 2,
         };
+        
+        let gpu_config = gpu_config.unwrap_or_default();
         
         let mut layers = Vec::with_capacity(n_layers);
         for _ in 0..n_layers {
-            layers.push(TransformerLayer::new(d_model, d_ff, n_heads)?);
+            layers.push(TransformerLayer::new(
+                d_model,
+                n_heads,
+                d_ff,
+                0.1, // Default dropout rate
+            )?);
         }
         
-        let pos_encoder = PositionalEncoder::new(d_model, config.max_seq_len)?;
+        let pos_encoder = PositionalEncoder::new(d_model, 100); // Default max_seq_len
         
         Ok(Self {
             layers,
             pos_encoder,
             config,
-            gpu_config: gpu_config.unwrap_or_default(),
+            gpu_config,
         })
     }
     
@@ -133,7 +174,7 @@ impl RiskModel for GPUTransformerRiskModel {
     /// 
     /// # Returns
     /// 
-    /// * `Result<(), ModelError>` - Success or error during training
+    /// * `Result<(), ModelError>`
     async fn train(&mut self, _data: &MarketData) -> Result<(), ModelError> {
         // The transformer model is self-supervised and doesn't require explicit training
         Ok(())
@@ -230,8 +271,6 @@ impl RiskModel for GPUTransformerRiskModel {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray_rand::RandomExt;
-    use ndarray_rand::rand_distr::Normal;
     
     #[tokio::test]
     async fn test_gpu_transformer_risk_model() -> Result<(), ModelError> {
@@ -240,7 +279,12 @@ mod tests {
         let d_ff = 256;
         let n_layers = 2;
         
-        let model = GPUTransformerRiskModel::new(d_model, n_heads, d_ff, n_layers, None)?;
+        // Create a custom config with smaller max_seq_len
+        let mut config = TransformerConfig::new(d_model, d_model, n_heads, d_ff, n_layers);
+        config.max_seq_len = 5; // Use a smaller max_seq_len for testing
+        
+        let gpu_config = GPUConfig::default();
+        let model = GPUTransformerRiskModel::with_config(config, gpu_config)?;
         
         let batch_size = 2;
         let seq_len = 10;
@@ -267,15 +311,17 @@ mod tests {
         let d_ff = 256;
         let n_layers = 2;
         
+        // Create a custom config with smaller max_seq_len
+        let mut config = TransformerConfig::new(d_model, d_model, n_heads, d_ff, n_layers);
+        config.max_seq_len = 5; // Use a smaller max_seq_len for testing
+        
         // Create CPU model
         let cpu_config = GPUConfig {
             device: ComputeDevice::CPU,
             ..GPUConfig::default()
         };
         
-        let cpu_model = GPUTransformerRiskModel::new(
-            d_model, n_heads, d_ff, n_layers, Some(cpu_config)
-        )?;
+        let cpu_model = GPUTransformerRiskModel::with_config(config.clone(), cpu_config)?;
         
         // Create GPU model (will fall back to CPU if GPU not available)
         let gpu_config = GPUConfig {
@@ -283,11 +329,9 @@ mod tests {
             ..GPUConfig::default()
         };
         
-        let gpu_model = GPUTransformerRiskModel::new(
-            d_model, n_heads, d_ff, n_layers, Some(gpu_config)
-        )?;
+        let gpu_model = GPUTransformerRiskModel::with_config(config, gpu_config)?;
         
-        // Generate test data
+        // Generate test data with enough samples
         let n_samples = 100;
         let input = Array2::random((n_samples, d_model), Normal::new(0.0, 1.0).unwrap());
         let returns = Array2::random((n_samples, d_model), Normal::new(0.0, 0.01).unwrap());
@@ -312,4 +356,4 @@ mod tests {
         
         Ok(())
     }
-} 
+}

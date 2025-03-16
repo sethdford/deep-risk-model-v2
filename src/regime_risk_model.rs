@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use crate::error::ModelError;
 use crate::types::{MarketData, RiskFactors, RiskModel};
 use crate::transformer_risk_model::TransformerRiskModel;
+use crate::transformer::TransformerConfig;
 use crate::regime::{MarketRegimeDetector, RegimeType, RegimeConfig};
 use std::collections::HashMap;
 
@@ -104,6 +105,100 @@ impl RegimeAwareRiskModel {
     ) -> Result<Self, ModelError> {
         let base_model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
         let regime_detector = MarketRegimeDetector::with_config(window_size, regime_config);
+        
+        // Initialize regime parameters
+        let mut regime_params = HashMap::new();
+        
+        // Low volatility regime: Lower risk estimates
+        regime_params.insert(RegimeType::LowVolatility, RegimeParameters {
+            volatility_scale: 0.8,
+            correlation_scale: 0.9,
+            risk_aversion: 0.7,
+        });
+        
+        // Normal regime: Standard risk estimates
+        regime_params.insert(RegimeType::Normal, RegimeParameters::default());
+        
+        // High volatility regime: Higher risk estimates
+        regime_params.insert(RegimeType::HighVolatility, RegimeParameters {
+            volatility_scale: 1.2,
+            correlation_scale: 1.1,
+            risk_aversion: 1.3,
+        });
+        
+        // Crisis regime: Much higher risk estimates
+        regime_params.insert(RegimeType::Crisis, RegimeParameters {
+            volatility_scale: 1.5,
+            correlation_scale: 1.3,
+            risk_aversion: 2.0,
+        });
+        
+        Ok(Self {
+            base_model,
+            regime_detector,
+            regime_params,
+            window_size,
+            current_regime: None,
+            training_data_size: 0,
+        })
+    }
+    
+    /// Create a new regime-aware risk model with a pre-configured transformer model
+    pub fn new_with_model(
+        base_model: TransformerRiskModel,
+        window_size: usize,
+        regime_config: RegimeConfig,
+    ) -> Result<Self, ModelError> {
+        let regime_detector = MarketRegimeDetector::with_config(window_size, regime_config);
+        
+        // Initialize regime parameters
+        let mut regime_params = HashMap::new();
+        
+        // Low volatility regime: Lower risk estimates
+        regime_params.insert(RegimeType::LowVolatility, RegimeParameters {
+            volatility_scale: 0.8,
+            correlation_scale: 0.9,
+            risk_aversion: 0.7,
+        });
+        
+        // Normal regime: Standard risk estimates
+        regime_params.insert(RegimeType::Normal, RegimeParameters::default());
+        
+        // High volatility regime: Higher risk estimates
+        regime_params.insert(RegimeType::HighVolatility, RegimeParameters {
+            volatility_scale: 1.2,
+            correlation_scale: 1.1,
+            risk_aversion: 1.3,
+        });
+        
+        // Crisis regime: Much higher risk estimates
+        regime_params.insert(RegimeType::Crisis, RegimeParameters {
+            volatility_scale: 1.5,
+            correlation_scale: 1.3,
+            risk_aversion: 2.0,
+        });
+        
+        Ok(Self {
+            base_model,
+            regime_detector,
+            regime_params,
+            window_size,
+            current_regime: None,
+            training_data_size: 0,
+        })
+    }
+    
+    /// Create a new regime-aware risk model with custom transformer configuration
+    pub fn with_transformer_config(
+        d_model: usize,
+        n_heads: usize,
+        d_ff: usize,
+        n_layers: usize,
+        window_size: usize,
+        transformer_config: TransformerConfig,
+    ) -> Result<Self, ModelError> {
+        let base_model = TransformerRiskModel::with_config(transformer_config)?;
+        let regime_detector = MarketRegimeDetector::new(window_size);
         
         // Initialize regime parameters
         let mut regime_params = HashMap::new();

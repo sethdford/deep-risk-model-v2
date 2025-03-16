@@ -40,6 +40,39 @@ pub struct TransformerRiskModel {
 }
 
 impl TransformerRiskModel {
+    /// Creates a new transformer-based risk model with the specified configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Configuration for the transformer model
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, ModelError>` - New transformer risk model or error if initialization fails
+    pub fn with_config(config: TransformerConfig) -> Result<Self, ModelError> {
+        let mut layers = Vec::with_capacity(config.n_layers);
+        
+        for _ in 0..config.n_layers {
+            layers.push(TransformerLayer::new(
+                config.d_model,
+                config.n_heads,
+                config.d_ff,
+                config.dropout,
+            )?);
+        }
+        
+        let pos_encoder = PositionalEncoder::new(config.d_model, config.max_seq_len);
+        
+        Ok(Self {
+            layers,
+            pos_encoder,
+            config,
+            quantized_weights: None,
+            sparse_weights: None,
+            memory_config: None,
+        })
+    }
+
     /// Creates a new transformer-based risk model with the specified architecture.
     /// 
     /// # Arguments
@@ -64,24 +97,30 @@ impl TransformerRiskModel {
     /// # }
     /// ```
     pub fn new(d_model: usize, n_heads: usize, d_ff: usize, n_layers: usize) -> Result<Self, ModelError> {
-        let config = TransformerConfig {
-            d_model,
-            n_heads,
-            d_ff,
-            dropout: 0.1,
-            n_layers,
-            max_seq_len: 5,
-            num_static_features: 5,
-            num_temporal_features: 10,
-            hidden_size: 32,
-        };
-        
         let mut layers = Vec::with_capacity(n_layers);
         for _ in 0..n_layers {
-            layers.push(TransformerLayer::new(d_model, d_ff, n_heads)?);
+            layers.push(TransformerLayer::new(
+                d_model,
+                n_heads,
+                d_ff,
+                0.1, // Default dropout rate
+            )?);
         }
         
-        let pos_encoder = PositionalEncoder::new(d_model, config.max_seq_len)?;
+        let max_seq_len = 100; // Default max sequence length
+        let pos_encoder = PositionalEncoder::new(d_model, max_seq_len);
+        
+        let config = TransformerConfig {
+            n_heads,
+            d_model,
+            d_ff,
+            n_layers,
+            dropout: 0.1,
+            max_seq_len,
+            num_static_features: d_model,
+            num_temporal_features: d_model,
+            hidden_size: d_model / 2,
+        };
         
         Ok(Self {
             layers,

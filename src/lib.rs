@@ -113,10 +113,8 @@ pub mod array_utils {
 
 #[cfg(test)]
 mod tests {
-    use crate::transformer_risk_model::TransformerRiskModel;
-    use crate::tft_risk_model::TFTRiskModel;
-    use crate::types::{MarketData, RiskModel};
-    use crate::error::ModelError;
+    use crate::prelude::*;
+    use crate::transformer::TransformerConfig;
     use ndarray::Array;
 
     #[test]
@@ -129,7 +127,11 @@ mod tests {
             let d_ff = 256;
             let n_layers = 3;
             
-            let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
+            // Create a custom config with smaller max_seq_len
+            let mut config = TransformerConfig::new(n_assets, d_model, n_heads, d_ff, n_layers);
+            config.max_seq_len = 3; // Use a smaller max_seq_len for testing
+            
+            let model = TransformerRiskModel::with_config(config)?;
             
             let n_samples = 6;
             let features = Array::zeros((n_samples, n_assets));
@@ -139,8 +141,8 @@ mod tests {
             let risk_factors = model.generate_risk_factors(&data).await?;
             
             // The output shape is [n_samples - max_seq_len + 1, d_model]
-            // With n_samples = 6 and max_seq_len = 5, we expect [2, 64]
-            assert_eq!(risk_factors.factors().shape(), &[2, d_model]);
+            // With n_samples = 6 and max_seq_len = 3, we expect [4, 64]
+            assert_eq!(risk_factors.factors().shape(), &[4, d_model]);
             assert_eq!(risk_factors.covariance().shape(), &[d_model, d_model]);
             
             Ok(())

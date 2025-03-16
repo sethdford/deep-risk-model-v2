@@ -7,8 +7,6 @@ use deep_risk_model::{
         MarketData, RiskModel
     },
     gpu::{is_cuda_available, get_gpu_info},
-    error::ModelError,
-    fallback,
 };
 use ndarray::Array;
 use ndarray_rand::RandomExt;
@@ -105,7 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         
         // Create a GPU model with the same transformer configuration
-        let mut gpu_model = GPUTransformerRiskModel::with_config(transformer_config, gpu_config)?;
+        let mut gpu_model = GPUTransformerRiskModel::with_config(transformer_config.clone(), gpu_config)?;
         
         // Train the GPU model
         println!("Training GPU model...");

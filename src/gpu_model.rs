@@ -302,9 +302,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_gpu_factor_generation() -> Result<(), ModelError> {
-        let model = GPUDeepRiskModel::new(64, 5, None)?;
-        let features = Array::random((100, 64), StandardNormal);
-        let returns = Array::random((100, 64), StandardNormal);
+        // Create a custom transformer config with smaller max_seq_len
+        let mut transformer_config = TransformerConfig::new(64, 64, 4, 128, 2);
+        transformer_config.max_seq_len = 5; // Use a smaller max_seq_len for testing
+        
+        let model = GPUDeepRiskModel::with_transformer_config(64, 5, transformer_config, None)?;
+        
+        // Generate more samples to ensure we have enough for covariance computation
+        let features = Array::random((200, 64), StandardNormal);
+        let returns = Array::random((200, 64), StandardNormal);
         let data = MarketData::new(returns, features);
         
         let factors = model.generate_risk_factors(&data).await?;
@@ -315,9 +321,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_gpu_factor_metrics() -> Result<(), ModelError> {
-        let model = GPUDeepRiskModel::new(64, 5, None)?;
-        let features = Array::random((100, 64), StandardNormal);
-        let returns = Array::random((100, 64), StandardNormal);
+        // Create a custom transformer config with smaller max_seq_len
+        let mut transformer_config = TransformerConfig::new(64, 64, 4, 128, 2);
+        transformer_config.max_seq_len = 5; // Use a smaller max_seq_len for testing
+        
+        let model = GPUDeepRiskModel::with_transformer_config(64, 5, transformer_config, None)?;
+        
+        // Generate more samples to ensure we have enough for covariance computation
+        let features = Array::random((200, 64), StandardNormal);
+        let returns = Array::random((200, 64), StandardNormal);
         let data = MarketData::new(returns, features);
         
         let metrics = model.get_factor_metrics(&data).await?;
@@ -334,13 +346,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_gpu_vs_cpu_performance() -> Result<(), ModelError> {
+        // Create a custom transformer config with smaller max_seq_len
+        let mut transformer_config = TransformerConfig::new(64, 64, 4, 128, 2);
+        transformer_config.max_seq_len = 5; // Use a smaller max_seq_len for testing
+        
         // Create CPU model
         let cpu_config = GPUConfig {
             device: ComputeDevice::CPU,
             ..GPUConfig::default()
         };
         
-        let cpu_model = GPUDeepRiskModel::new(64, 5, Some(cpu_config))?;
+        let cpu_model = GPUDeepRiskModel::with_transformer_config(64, 5, transformer_config.clone(), Some(cpu_config))?;
         
         // Create GPU model (will fall back to CPU if GPU not available)
         let gpu_config = GPUConfig {
@@ -348,11 +364,11 @@ mod tests {
             ..GPUConfig::default()
         };
         
-        let gpu_model = GPUDeepRiskModel::new(64, 5, Some(gpu_config))?;
+        let gpu_model = GPUDeepRiskModel::with_transformer_config(64, 5, transformer_config, Some(gpu_config))?;
         
-        // Generate test data
-        let features = Array::random((100, 64), StandardNormal);
-        let returns = Array::random((100, 64), StandardNormal);
+        // Generate test data with enough samples
+        let features = Array::random((200, 64), StandardNormal);
+        let returns = Array::random((200, 64), StandardNormal);
         let data = MarketData::new(returns, features);
         
         // Measure CPU performance

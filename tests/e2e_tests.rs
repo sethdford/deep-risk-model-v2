@@ -9,6 +9,7 @@ mod tests {
     use ndarray::Array2;
     use ndarray_rand::RandomExt;
     use ndarray_rand::rand_distr::Normal;
+    use deep_risk_model::transformer::TransformerConfig;
 
     fn generate_test_data(num_stocks: usize, seq_len: usize) -> MarketData {
         let features = Array2::<f32>::random((seq_len, num_stocks), Normal::new(0.0, 1.0).unwrap());
@@ -30,11 +31,15 @@ mod tests {
         let n_heads = 8;
         let d_ff = 256;
         let n_layers = 3;
-        let transformer_model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
+        
+        // Create a custom transformer config with a specific max_seq_len
+        let mut config = TransformerConfig::new(n_assets, d_model, n_heads, d_ff, n_layers);
+        config.max_seq_len = 100; // Explicitly set max_seq_len
+        let transformer_model = TransformerRiskModel::with_config(config)?;
 
         // Generate risk factors using the transformer model
         let risk_factors = transformer_model.generate_risk_factors(&data).await?;
-        let window_size = 5; // Default max_seq_len in TransformerConfig
+        let window_size = 100; // Default max_seq_len in TransformerConfig
         let expected_samples = n_samples - window_size + 1;
         assert_eq!(risk_factors.factors().shape()[0], expected_samples);
         assert_eq!(risk_factors.factors().shape()[1], d_model);
@@ -63,11 +68,14 @@ mod tests {
         let returns = Array2::random((n_samples, n_assets), Normal::new(0.0, 0.1).unwrap());
         let data = MarketData::new(returns, features);
         
-        let transformer_model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
+        // Create a custom transformer config with a specific max_seq_len
+        let mut config = TransformerConfig::new(n_assets, d_model, n_heads, d_ff, n_layers);
+        config.max_seq_len = 100; // Explicitly set max_seq_len
+        let transformer_model = TransformerRiskModel::with_config(config)?;
 
         // Generate risk factors
         let risk_factors = transformer_model.generate_risk_factors(&data).await?;
-        let window_size = 5; // Default max_seq_len in TransformerConfig
+        let window_size = 100; // Default max_seq_len in TransformerConfig
         let expected_samples = n_samples - window_size + 1;
         assert_eq!(risk_factors.factors().shape()[0], expected_samples);
         assert_eq!(risk_factors.factors().shape()[1], d_model);

@@ -15,7 +15,7 @@ pub struct PositionalEncoder {
 
 impl PositionalEncoder {
     /// Create a new positional encoder
-    pub fn new(d_model: usize, max_seq_len: usize) -> Result<Self, ModelError> {
+    pub fn new(d_model: usize, max_seq_len: usize) -> Self {
         let mut encoding = Array2::zeros((max_seq_len, d_model));
         
         for pos in 0..max_seq_len {
@@ -29,11 +29,11 @@ impl PositionalEncoder {
             }
         }
         
-        Ok(Self {
+        Self {
             d_model,
             max_seq_len,
             encoding,
-        })
+        }
     }
     
     /// Get the dimension of the model
@@ -97,7 +97,7 @@ mod tests {
         let batch_size = 16;
         let seq_len = 50;
         
-        let encoder = PositionalEncoder::new(d_model, max_seq_len)?;
+        let encoder = PositionalEncoder::new(d_model, max_seq_len);
         let input = Array2::zeros((batch_size * seq_len, d_model));
         
         let output = encoder.forward(&input)?;
