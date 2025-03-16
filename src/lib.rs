@@ -190,4 +190,34 @@ pub mod ndarray_linalg {
             write!(f, "BLAS operations are not available in no-blas mode")
         }
     }
+    
+    // Provide a minimal implementation of the traits and functions needed
+    pub mod error {
+        pub use super::LinalgError;
+        pub type Result<T> = std::result::Result<T, LinalgError>;
+    }
+    
+    // Minimal implementation of the linalg module
+    pub mod impl_linalg {
+        use super::error::Result;
+        use ndarray::{ArrayBase, Data, Dimension};
+        
+        // Stub for matrix multiplication
+        pub fn mat_mul_impl<A, S1, S2, D1, D2>(
+            _alpha: A,
+            _a: &ArrayBase<S1, D1>,
+            _b: &ArrayBase<S2, D2>,
+            _beta: A,
+            _c: &mut ArrayBase<S1, D1>,
+        ) -> Result<()>
+        where
+            A: Copy,
+            S1: Data<Elem = A>,
+            S2: Data<Elem = A>,
+            D1: Dimension,
+            D2: Dimension,
+        {
+            Err(super::LinalgError)
+        }
+    }
 }
