@@ -1,5 +1,5 @@
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, s, Axis};
-#[cfg(not(feature = "no-blas"))]
+#[cfg(feature = "blas-enabled")]
 use ndarray_linalg::Solve;
 use crate::error::ModelError;
 

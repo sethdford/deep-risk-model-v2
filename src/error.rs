@@ -153,7 +153,7 @@ impl From<std::num::ParseFloatError> for ModelError {
     }
 }
 
-#[cfg(not(feature = "no-blas"))]
+#[cfg(feature = "blas-enabled")]
 impl From<ndarray_linalg::error::LinalgError> for ModelError {
     fn from(err: ndarray_linalg::error::LinalgError) -> Self {
         ModelError::NumericalError(format!("Linear algebra error: {}", err))
