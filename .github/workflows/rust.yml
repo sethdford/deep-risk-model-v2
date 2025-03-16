@@ -79,4 +79,7 @@ jobs:
     
     # Run tests with no-blas feature
     - name: Run tests with no-blas
-      run: cargo test --verbose --no-default-features --features no-blas
+      run: |
+        # Ensure we're only using the no-blas feature and not accidentally enabling BLAS
+        cargo clean
+        cargo test --verbose --no-default-features --features no-blas

@@ -103,14 +103,7 @@ gpu = []  # Will include CUDA dependencies when they are properly implemented
 accelerate-src = { version = "0.3", optional = true }
 blas-src = { version = "0.8", optional = true, features = ["accelerate"] }
 
-# Ensure tests always use no-blas for maximum compatibility
-[dev-dependencies.deep_risk_model]
-path = "."
-default-features = false
-features = ["no-blas"]
-
-# Don't include any BLAS-specific dependencies in dev-dependencies
-# to avoid conflicts with the no-blas feature
+# Dev dependencies for testing
 [dev-dependencies]
 # Async testing
 tokio-test = "0.4"

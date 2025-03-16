@@ -24,13 +24,13 @@ fn main() {
         // If both no-blas and a BLAS implementation are enabled, warn about it and disable BLAS features
         if any_blas_feature_enabled || blas_enabled {
             println!("cargo:warning=Both no-blas and a BLAS implementation are enabled. Using no-blas mode.");
-            
-            // Disable all BLAS features at the rustc level
-            println!("cargo:rustc-cfg=feature=\"!openblas\"");
-            println!("cargo:rustc-cfg=feature=\"!accelerate\"");
-            println!("cargo:rustc-cfg=feature=\"!intel-mkl\"");
-            println!("cargo:rustc-cfg=feature=\"!blas-enabled\"");
         }
+        
+        // Always disable all BLAS features at the rustc level when no-blas is enabled
+        println!("cargo:rustc-cfg=feature=\"!openblas\"");
+        println!("cargo:rustc-cfg=feature=\"!accelerate\"");
+        println!("cargo:rustc-cfg=feature=\"!intel-mkl\"");
+        println!("cargo:rustc-cfg=feature=\"!blas-enabled\"");
         
         // Early return to avoid setting any BLAS-related configurations
         return;
