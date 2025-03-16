@@ -85,10 +85,10 @@ sysinfo = "0.29"
 
 [features]
 # Default features - platform-specific implementation will be selected in build.rs
-default = []
+default = ["openblas"]
 
 # Platform-specific BLAS implementations
-openblas = ["ndarray/blas", "ndarray-linalg", "openblas-src", "cblas-sys", "lapack-sys", "blas-enabled"]
+openblas = ["ndarray/blas", "ndarray-linalg", "openblas-src/system", "blas-enabled"]
 netlib = ["ndarray/blas", "ndarray-linalg", "netlib-src", "blas-enabled"]
 intel-mkl = ["ndarray/blas", "ndarray-linalg", "intel-mkl-src", "blas-enabled"]
 accelerate = ["ndarray/blas", "ndarray-linalg", "accelerate-src", "blas-src", "blas-src/accelerate", "blas-enabled"]

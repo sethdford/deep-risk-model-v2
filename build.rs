@@ -1,3 +1,54 @@
+// Define the configure_linux function without conditional compilation
+fn configure_linux() {
+    // Check if OpenBLAS is enabled
+    if cfg!(feature = "openblas") {
+        println!("cargo:warning=deep_risk_model@{}: Using OpenBLAS on Linux", env!("CARGO_PKG_VERSION"));
+        
+        // Try to find OpenBLAS in standard locations
+        let openblas_paths = [
+            "/usr/lib/x86_64-linux-gnu",
+            "/usr/lib/x86_64-linux-gnu/openblas-pthread",
+            "/usr/lib/openblas-base",
+            "/usr/lib64",
+            "/usr/local/lib",
+        ];
+        
+        for path in openblas_paths.iter() {
+            if std::path::Path::new(path).exists() {
+                println!("cargo:warning=deep_risk_model@{}: Found OpenBLAS at {}", env!("CARGO_PKG_VERSION"), path);
+                println!("cargo:rustc-link-search=native={}", path);
+                break;
+            }
+        }
+        
+        // Link against OpenBLAS directly - on most Linux systems, libopenblas.so includes CBLAS and LAPACK
+        println!("cargo:rustc-link-lib=openblas");
+        
+        // Don't explicitly link against cblas and lapack as they're included in OpenBLAS
+        // If we're using the system feature, the system is responsible for providing these
+        if cfg!(feature = "system") {
+            println!("cargo:warning=deep_risk_model@{}: Using system-provided BLAS libraries", env!("CARGO_PKG_VERSION"));
+        }
+        
+        // Link against gfortran which is needed for some LAPACK routines
+        println!("cargo:rustc-link-lib=gfortran");
+    }
+    
+    // Check if Netlib is enabled
+    if cfg!(feature = "netlib") {
+        println!("cargo:warning=deep_risk_model@{}: Using Netlib BLAS on Linux", env!("CARGO_PKG_VERSION"));
+        println!("cargo:rustc-link-lib=blas");
+        println!("cargo:rustc-link-lib=lapack");
+    }
+    
+    // Check if Intel MKL is enabled
+    if cfg!(feature = "intel-mkl") {
+        println!("cargo:warning=deep_risk_model@{}: Using Intel MKL on Linux", env!("CARGO_PKG_VERSION"));
+        println!("cargo:rustc-link-search=native=/opt/intel/mkl/lib/intel64");
+        println!("cargo:rustc-link-lib=mkl_rt");
+    }
+}
+
 fn main() {
     // Detect the operating system
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
@@ -49,21 +100,30 @@ fn main() {
                 // Explicitly set the framework path
                 println!("cargo:rustc-link-search=framework=/System/Library/Frameworks");
             },
+            "linux" => {
+                // On Linux, use OpenBLAS by default
+                println!("cargo:rustc-cfg=feature=\"openblas\"");
+                println!("cargo:rustc-cfg=feature=\"blas-enabled\"");
+                configure_linux();
+            },
             _ => {
-                // On Linux and other platforms, use OpenBLAS by default
+                // On other platforms, use OpenBLAS by default
                 println!("cargo:rustc-cfg=feature=\"openblas\"");
                 println!("cargo:rustc-cfg=feature=\"blas-enabled\"");
                 println!("cargo:warning=Using OpenBLAS for BLAS operations");
                 
-                // Explicitly link to OpenBLAS on Linux
+                // Explicitly link to OpenBLAS
                 println!("cargo:rustc-link-lib=openblas");
-                println!("cargo:rustc-link-lib=cblas");
-                println!("cargo:rustc-link-lib=lapack");
             }
         }
     } else {
         // A specific BLAS feature is enabled
         println!("cargo:rustc-cfg=feature=\"blas-enabled\"");
+        
+        // Call platform-specific configuration based on enabled features
+        if openblas_enabled && target_os == "linux" {
+            configure_linux();
+        }
     }
     
     // Platform-specific optimizations and configurations
