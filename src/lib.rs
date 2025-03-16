@@ -69,6 +69,7 @@ pub mod utils;
 pub mod backtest;
 pub mod stress_testing;
 pub mod fallback;
+pub mod api;
 
 // GPU acceleration modules
 pub mod gpu;
@@ -94,6 +95,7 @@ pub mod prelude {
     pub use crate::stress_testing::{EnhancedStressScenarioGenerator, StressTestExecutor, StressTestResults, 
                                 StressScenario, HistoricalPeriod, ScenarioCombinationSettings, 
                                 StressTestSettings, ReportDetail, ScenarioComparison};
+    pub use crate::api::{AppState, run_server};
     
     // GPU acceleration types
     pub use crate::gpu::{ComputeDevice, GPUConfig};
@@ -174,10 +176,7 @@ mod tests {
     }
 }
 
-// Export the ndarray_linalg module for use by other modules
-#[cfg(feature = "blas-enabled")]
-pub use ndarray_linalg;
-
+// Fallback implementation for when BLAS is not available
 #[cfg(not(feature = "blas-enabled"))]
 pub mod ndarray_linalg {
     // Provide a minimal fallback implementation for when BLAS is not available

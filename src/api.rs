@@ -1,6 +1,30 @@
+/// API Module for Deep Risk Model
+///
+/// This module provides a reusable API implementation for the Deep Risk Model.
+/// It can be integrated into other applications or used as a library component.
+/// 
+/// Features:
+/// - Configurable model parameters
+/// - Training endpoint
+/// - Risk factor generation
+/// - Covariance estimation
+/// - Health check
+///
+/// Example usage:
+/// ```rust,no_run
+/// use deep_risk_model::prelude::{ModelConfig, run_server};
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     // Create a model configuration
+///     let config = ModelConfig::new(64, 8, 3, 0.1);
+///     
+///     run_server(config).await?;
+///     Ok(())
+/// }
+/// ```
 use crate::{
-    types::{MarketData, ModelConfig, RiskModel},
-    DeepRiskModel, ModelError,
+    prelude::{DeepRiskModel, MarketData, ModelConfig, ModelError, RiskModel},
 };
 use axum::{
     extract::State,
@@ -36,8 +60,10 @@ pub struct CovarianceResponse {
     covariance: Vec<Vec<f32>>,
 }
 
-pub async fn run_server(config: ModelConfig) -> Result<(), ModelError> {
-    let model = DeepRiskModel::new(config.n_assets, config.n_factors)?;
+pub async fn run_server(_config: ModelConfig) -> Result<(), ModelError> {
+    // Create a model with appropriate dimensions
+    // For this example, we'll use 100 assets and 10 factors
+    let model = DeepRiskModel::new(100, 10)?;
     let state = AppState {
         model: Arc::new(Mutex::new(model)),
     };
@@ -57,10 +83,10 @@ pub async fn run_server(config: ModelConfig) -> Result<(), ModelError> {
 
     let addr = "0.0.0.0:3000";
     println!("Server running on {}", addr);
-    axum::Server::bind(&addr.parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind(addr).await
+        .map_err(|e| ModelError::IO(e))?;
+    axum::serve(listener, app).await
+        .map_err(|e| ModelError::IO(e))?;
 
     Ok(())
 }

@@ -1,3 +1,12 @@
+/// API Server for Deep Risk Model
+///
+/// This binary provides a standalone HTTP API server for the Deep Risk Model.
+/// It exposes endpoints for:
+/// - Health check: GET /health
+/// - Risk factor generation: POST /risk-factors
+///
+/// The server handles both BLAS-enabled and no-BLAS modes with appropriate
+/// fallbacks and error handling.
 use axum::{
     routing::{get, post},
     extract::State,
