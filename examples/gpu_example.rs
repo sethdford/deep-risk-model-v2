@@ -63,13 +63,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Try to create GPU model, handle potential BLAS unavailability
     let gpu_result = GPUTransformerRiskModel::new(d_model, n_heads, d_ff, n_layers, gpu_config.clone());
     
-    let mut gpu_model = match gpu_result {
-        Ok(model) => model,
+    // Use Box<dyn RiskModel> to handle both model types
+    let mut model: Box<dyn RiskModel> = match gpu_result {
+        Ok(model) => Box::new(model),
         Err(e) => {
             println!("Failed to create GPU model: {}", e);
             println!("Using CPU-only implementation instead");
             // Fall back to CPU model
-            TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?
+            Box::new(TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?)
         }
     };
     
@@ -86,13 +87,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let gpu_start = Instant::now();
     // Handle potential errors during GPU training
-    match gpu_model.train(&market_data).await {
+    match model.train(&market_data).await {
         Ok(_) => {
             let gpu_train_time = gpu_start.elapsed();
-            println!("GPU training time: {:?}", gpu_train_time);
+            println!("Model training time: {:?}", gpu_train_time);
         },
         Err(e) => {
-            println!("GPU training failed: {}", e);
+            println!("Model training failed: {}", e);
             println!("This may be due to missing BLAS libraries or GPU drivers");
         }
     }
@@ -108,11 +109,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let gpu_start = Instant::now();
     // Handle potential errors during GPU risk factor generation
-    match gpu_model.generate_risk_factors(&market_data).await {
+    match model.generate_risk_factors(&market_data).await {
         Ok(gpu_factors) => {
             let gpu_factor_time = gpu_start.elapsed();
-            println!("GPU factor generation time: {:?}", gpu_factor_time);
-            println!("GPU factors shape: {:?}", gpu_factors.factors().shape());
+            println!("Model factor generation time: {:?}", gpu_factor_time);
+            println!("Model factors shape: {:?}", gpu_factors.factors().shape());
             
             // Calculate speedup
             println!("\nPerformance comparison:");
@@ -120,7 +121,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Factor generation speedup: {:.2}x", factor_speedup);
         },
         Err(e) => {
-            println!("GPU factor generation failed: {}", e);
+            println!("Model factor generation failed: {}", e);
             println!("This may be due to missing BLAS libraries or GPU drivers");
         }
     }
@@ -135,17 +136,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let gpu_start = Instant::now();
     // Handle potential errors during GPU covariance estimation
-    match gpu_model.estimate_covariance(&market_data).await {
+    match model.estimate_covariance(&market_data).await {
         Ok(gpu_cov) => {
             let gpu_cov_time = gpu_start.elapsed();
-            println!("GPU covariance estimation time: {:?}", gpu_cov_time);
+            println!("Model covariance estimation time: {:?}", gpu_cov_time);
             
             // Calculate speedup
             let cov_speedup = cpu_cov_time.as_secs_f64() / gpu_cov_time.as_secs_f64();
             println!("Covariance estimation speedup: {:.2}x", cov_speedup);
         },
         Err(e) => {
-            println!("GPU covariance estimation failed: {}", e);
+            println!("Model covariance estimation failed: {}", e);
             println!("This may be due to missing BLAS libraries or GPU drivers");
         }
     }
