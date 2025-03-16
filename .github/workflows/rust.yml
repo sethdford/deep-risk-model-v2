@@ -30,13 +30,16 @@ jobs:
       if: matrix.install_deps
       run: |
         sudo apt-get update
-        sudo apt-get install -y libopenblas-dev liblapack-dev libblas-dev libcblas-dev gfortran
+        # libatlas-base-dev provides CBLAS functionality
+        sudo apt-get install -y libopenblas-dev liblapack-dev libblas-dev libatlas-base-dev gfortran
         # Create symbolic links to ensure libraries are found
         sudo mkdir -p /usr/local/lib/
         sudo ln -sf /usr/lib/x86_64-linux-gnu/libopenblas.so /usr/local/lib/libopenblas.so
         sudo ln -sf /usr/lib/x86_64-linux-gnu/libblas.so /usr/local/lib/libblas.so
         sudo ln -sf /usr/lib/x86_64-linux-gnu/liblapack.so /usr/local/lib/liblapack.so
-        sudo ln -sf /usr/lib/x86_64-linux-gnu/libcblas.so /usr/local/lib/libcblas.so
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/libatlas.so /usr/local/lib/libatlas.so
+        # ATLAS provides CBLAS, create a symlink for libcblas.so
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/libatlas.so /usr/local/lib/libcblas.so
         # Set environment variables
         echo "OPENBLAS_PATH=/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
@@ -45,11 +48,11 @@ jobs:
         ls -la /usr/lib/x86_64-linux-gnu/lib*blas* || true
         ls -la /usr/lib/x86_64-linux-gnu/libopenblas* || true
         ls -la /usr/lib/x86_64-linux-gnu/liblapack* || true
-        ls -la /usr/lib/x86_64-linux-gnu/libcblas* || true
+        ls -la /usr/lib/x86_64-linux-gnu/libatlas* || true
         # Check if OpenBLAS has CBLAS symbols
         nm -D /usr/lib/x86_64-linux-gnu/libopenblas.so | grep -i cblas || true
-        # Check if CBLAS library has the required symbols
-        nm -D /usr/lib/x86_64-linux-gnu/libcblas.so | grep -i cblas_[sdcz]gemm || true
+        # Check if ATLAS has the required CBLAS symbols
+        nm -D /usr/lib/x86_64-linux-gnu/libatlas.so | grep -i cblas_[sdcz]gemm || true
     
     - name: Set up Rust cache
       uses: actions/cache@v3

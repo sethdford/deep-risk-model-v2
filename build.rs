@@ -37,8 +37,8 @@ fn main() {
             // Plain linking
             println!("cargo:rustc-link-lib=openblas");
             
-            // Explicitly link to CBLAS
-            println!("cargo:rustc-link-lib=cblas");
+            // Link to ATLAS for CBLAS functionality
+            println!("cargo:rustc-link-lib=atlas");
             
             // Link to BLAS and LAPACK
             println!("cargo:rustc-link-lib=blas");
@@ -52,7 +52,8 @@ fn main() {
             println!("cargo:rustc-link-lib=pthread");
         } else if netlib {
             println!("cargo:warning=Building with Netlib");
-            println!("cargo:rustc-link-lib=cblas");
+            // Use ATLAS for CBLAS
+            println!("cargo:rustc-link-lib=atlas");
             println!("cargo:rustc-link-lib=blas");
             println!("cargo:rustc-link-lib=lapack");
         } else if intel_mkl {
@@ -70,8 +71,8 @@ fn main() {
             // Try OpenBLAS first (includes CBLAS)
             println!("cargo:rustc-link-lib=openblas");
             
-            // Explicitly try CBLAS
-            println!("cargo:rustc-link-lib=cblas");
+            // Try ATLAS for CBLAS
+            println!("cargo:rustc-link-lib=atlas");
             
             // Try standard BLAS and LAPACK
             println!("cargo:rustc-link-lib=blas");
