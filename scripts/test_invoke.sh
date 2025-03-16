@@ -1,12 +1,8 @@
 #!/bin/bash
 set -e
 
-echo "Building the Rust application..."
-cargo build --release --features openblas --no-default-features --bin bootstrap
-
-echo "Creating SAM build directory..."
-mkdir -p .aws-sam/build/DeepRiskModelFunction/
-cp target/release/bootstrap .aws-sam/build/DeepRiskModelFunction/
+echo "Cleaning previous build artifacts..."
+make clean
 
 echo "Building the SAM application..."
 sam build
