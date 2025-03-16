@@ -31,6 +31,71 @@ cargo test --features openblas --no-default-features
 cargo test --features accelerate --no-default-features
 ```
 
+### Local Testing with SAM
+
+You can test the API locally before deploying to AWS using the SAM CLI. There are two ways to test:
+
+#### 1. Testing with API Gateway (start-api)
+
+This method starts a local API Gateway that forwards requests to your Lambda function:
+
+##### On Linux:
+
+```bash
+# Run the local testing script
+./scripts/test_local.sh
+```
+
+##### On macOS:
+
+```bash
+# Run the local testing script for macOS
+./scripts/test_local_mac.sh
+```
+
+This will:
+1. Build the Rust application with the appropriate features
+2. Set up the SAM build directory
+3. Start a local API Gateway and Lambda environment
+
+Once running, the API will be available at http://127.0.0.1:3000/risk-factors. You can test it with:
+
+```bash
+# Install Python dependencies
+pip install -r scripts/requirements.txt
+
+# Test the local API
+python scripts/test_api.py --api-url http://127.0.0.1:3000/risk-factors
+```
+
+To stop the local API, press Ctrl+C in the terminal where it's running.
+
+#### 2. Testing Lambda Directly (invoke)
+
+This method invokes the Lambda function directly with a sample event:
+
+##### On Linux:
+
+```bash
+# Run the Lambda invoke script
+./scripts/test_invoke.sh
+```
+
+##### On macOS:
+
+```bash
+# Run the Lambda invoke script for macOS
+./scripts/test_invoke_mac.sh
+```
+
+This will:
+1. Build the Rust application with the appropriate features
+2. Set up the SAM build directory
+3. Invoke the Lambda function with a sample event from `scripts/test_event.json`
+4. Display the response in the terminal
+
+You can modify the sample event in `scripts/test_event.json` to test different inputs.
+
 ## Deployment
 
 ### Manual Deployment
