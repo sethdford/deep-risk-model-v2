@@ -94,6 +94,8 @@ system = ["ndarray/blas", "ndarray-linalg", "openblas-src/system", "blas-enabled
 blas-enabled = []
 
 # No BLAS support - pure Rust implementation
+# IMPORTANT: When using this feature, you MUST also disable default features:
+# cargo build --no-default-features --features no-blas
 no-blas = []
 
 # GPU feature - placeholder for future GPU support

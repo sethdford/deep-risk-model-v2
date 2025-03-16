@@ -184,6 +184,64 @@ pub mod ndarray_linalg {
     pub mod error {
         #[derive(Debug)]
         pub struct LinalgError;
+        
+        impl std::fmt::Display for LinalgError {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "LinalgError: BLAS operations not available in no-blas mode")
+            }
+        }
+        
+        impl std::error::Error for LinalgError {}
+    }
+    
+    // Provide stub implementations for common traits to satisfy imports
+    pub trait Solve<T> {
+        type Output;
+        fn solve(&self, _b: &T) -> Result<Self::Output, error::LinalgError>;
+    }
+    
+    pub trait Eigh {
+        type Output;
+        fn eigh(&self) -> Result<Self::Output, error::LinalgError>;
+    }
+    
+    pub trait Svd {
+        type Output;
+        fn svd(&self) -> Result<Self::Output, error::LinalgError>;
+    }
+    
+    // Implement stubs for common ndarray types to prevent compilation errors
+    impl<S, D> Solve<ndarray::ArrayBase<S, D>> for ndarray::ArrayBase<S, D> 
+    where
+        S: ndarray::Data,
+        D: ndarray::Dimension,
+    {
+        type Output = ndarray::Array<f32, D>;
+        fn solve(&self, _b: &ndarray::ArrayBase<S, D>) -> Result<Self::Output, error::LinalgError> {
+            Err(error::LinalgError)
+        }
+    }
+    
+    impl<S, D> Eigh for ndarray::ArrayBase<S, D> 
+    where
+        S: ndarray::Data,
+        D: ndarray::Dimension,
+    {
+        type Output = (ndarray::Array<f32, D>, ndarray::Array<f32, D>);
+        fn eigh(&self) -> Result<Self::Output, error::LinalgError> {
+            Err(error::LinalgError)
+        }
+    }
+    
+    impl<S, D> Svd for ndarray::ArrayBase<S, D> 
+    where
+        S: ndarray::Data,
+        D: ndarray::Dimension,
+    {
+        type Output = (ndarray::Array<f32, D>, ndarray::Array<f32, D>, ndarray::Array<f32, D>);
+        fn svd(&self) -> Result<Self::Output, error::LinalgError> {
+            Err(error::LinalgError)
+        }
     }
 }
 
@@ -261,7 +319,7 @@ pub mod fallback {
                 if det.abs() < 1e-10 {
                     return Err(ModelError::NumericalError("Matrix is singular".to_string()));
                 }
-                
+
                 let inv_det = 1.0 / det;
                 
                 // Calculate cofactors

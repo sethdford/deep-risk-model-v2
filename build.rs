@@ -19,10 +19,30 @@ fn main() {
         // Explicitly disable any BLAS-related linking
         println!("cargo:rustc-cfg=feature=\"no-blas-linking\"");
         
+        // CRITICAL: Do NOT try to link against any BLAS libraries
+        // Instead of using the '!' prefix which is causing issues, we'll just not include any BLAS libraries
+        
         // If both no-blas and a BLAS implementation are enabled, warn about it
         if blas_enabled {
             println!("cargo:warning=Both no-blas and a BLAS implementation are enabled. Using no-blas mode.");
             println!("cargo:rustc-cfg=feature=\"no-blas-override\"");
+            
+            // Disable all BLAS features at the rustc level
+            if std::env::var("CARGO_FEATURE_OPENBLAS").is_ok() {
+                println!("cargo:rustc-cfg=feature=\"!openblas\"");
+            }
+            if std::env::var("CARGO_FEATURE_NETLIB").is_ok() {
+                println!("cargo:rustc-cfg=feature=\"!netlib\"");
+            }
+            if std::env::var("CARGO_FEATURE_INTEL_MKL").is_ok() {
+                println!("cargo:rustc-cfg=feature=\"!intel-mkl\"");
+            }
+            if std::env::var("CARGO_FEATURE_ACCELERATE").is_ok() {
+                println!("cargo:rustc-cfg=feature=\"!accelerate\"");
+            }
+            if std::env::var("CARGO_FEATURE_SYSTEM").is_ok() {
+                println!("cargo:rustc-cfg=feature=\"!system\"");
+            }
         }
     } else if blas_enabled {
         // Check if we're using Accelerate
@@ -38,6 +58,9 @@ fn main() {
                 println!("cargo:warning=Defaulting to no-blas mode for this build");
                 println!("cargo:rustc-cfg=feature=\"no-blas\"");
                 println!("cargo:rustc-cfg=feature=\"no-blas-linking\"");
+                
+                // Explicitly disable BLAS linking
+                // We'll just not include any BLAS libraries
             } else {
                 println!("cargo:warning=Using system BLAS via vcpkg on Windows");
             }
@@ -149,6 +172,9 @@ fn main() {
         println!("cargo:warning=No BLAS implementation or no-blas feature is enabled. Defaulting to no-blas mode.");
         println!("cargo:rustc-cfg=feature=\"no-blas\"");
         println!("cargo:rustc-cfg=feature=\"no-blas-linking\"");
+        
+        // Explicitly disable BLAS linking
+        // We'll just not include any BLAS libraries
     }
     
     // Check if we're running tests

@@ -233,6 +233,7 @@ To use the no-BLAS implementation:
 
 ```bash
 # Build without BLAS (pure Rust implementation)
+# IMPORTANT: You MUST use --no-default-features to disable the default BLAS implementation
 cargo build --no-default-features --features no-blas
 ```
 
