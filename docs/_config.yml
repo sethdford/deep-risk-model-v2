@@ -4,7 +4,7 @@ url: "https://sethdford.github.io/deep-risk-model-v2"
 repository: sethdford/deep-risk-model-v2
 
 # Theme settings
-remote_theme: pmarsceill/just-the-docs
+theme: just-the-docs
 color_scheme: dark
 
 # Enable or disable the site search
