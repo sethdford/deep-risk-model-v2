@@ -221,26 +221,45 @@ impl FactorAnalyzer {
     fn correlation(&self, x: &ArrayView1<f32>, y: &ArrayView1<f32>) -> Result<f32, ModelError> {
         let n_x = x.len();
         let n_y = y.len();
-        let n = n_x.min(n_y);
+        let n: usize = n_x.min(n_y);
         
         if n == 0 {
             return Ok(0.0);
         }
         
-        let mean_x = x.slice(s![..n]).mean().unwrap_or(0.0);
-        let mean_y = y.slice(s![..n]).mean().unwrap_or(0.0);
-        let std_x = x.slice(s![..n]).std(0.0);
-        let std_y = y.slice(s![..n]).std(0.0);
+        // Explicitly calculate mean to avoid Option issues
+        let mut sum_x = 0.0;
+        let mut sum_y = 0.0;
+        for i in 0..n {
+            sum_x += x[i];
+            sum_y += y[i];
+        }
+        let mean_x = sum_x / (n as f32);
+        let mean_y = sum_y / (n as f32);
+        
+        // Explicitly calculate standard deviation
+        let mut sum_sq_x = 0.0;
+        let mut sum_sq_y = 0.0;
+        for i in 0..n {
+            sum_sq_x += (x[i] - mean_x).powi(2);
+            sum_sq_y += (y[i] - mean_y).powi(2);
+        }
+        let std_x = (sum_sq_x / (n as f32)).sqrt();
+        let std_y = (sum_sq_y / (n as f32)).sqrt();
         
         if std_x < 1e-10 || std_y < 1e-10 {
             return Ok(0.0);
         }
         
+        // Calculate covariance
         let mut cov = 0.0;
         for i in 0..n {
             cov += (x[i] - mean_x) * (y[i] - mean_y);
         }
-        cov /= (n - 1) as f32;
+        
+        // Convert n to f32 before subtraction to avoid type errors
+        let n_f32 = n as f32;
+        cov /= (n_f32 - 1.0);
         
         Ok(cov / (std_x * std_y))
     }
