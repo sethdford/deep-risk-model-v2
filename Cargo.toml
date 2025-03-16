@@ -35,13 +35,14 @@ rand_chacha = "0.3"
 num-traits = "0.2"
 
 # Linear algebra - simplified approach
-ndarray-linalg = { version = "0.16", optional = true, features = ["openblas-static"] }
+ndarray-linalg = { version = "0.16", optional = true }
 
 # BLAS implementation options - only one will be used based on features
 openblas-src = { version = "0.10", optional = true, features = ["cblas"] }
 netlib-src = { version = "0.8", optional = true, features = ["cblas"] }
 intel-mkl-src = { version = "0.8", optional = true }
 accelerate-src = { version = "0.3", optional = true }
+blas-src = { version = "0.8", optional = true }
 
 # Async traits
 async-trait = "0.1"
@@ -83,13 +84,13 @@ sysinfo = "0.29"
 default = []
 
 # Platform-specific BLAS implementations
-openblas = ["ndarray/blas", "ndarray-linalg", "dep:openblas-src", "blas-enabled"]
-netlib = ["ndarray/blas", "ndarray-linalg", "dep:netlib-src", "blas-enabled"]
-intel-mkl = ["ndarray/blas", "ndarray-linalg", "dep:intel-mkl-src", "blas-enabled"]
-accelerate = ["ndarray/blas", "ndarray-linalg", "dep:accelerate-src", "blas-enabled"]
+openblas = ["ndarray/blas", "dep:ndarray-linalg", "ndarray-linalg/openblas-static", "dep:openblas-src", "blas-enabled"]
+netlib = ["ndarray/blas", "dep:ndarray-linalg", "ndarray-linalg/netlib-static", "dep:netlib-src", "blas-enabled"]
+intel-mkl = ["ndarray/blas", "dep:ndarray-linalg", "ndarray-linalg/intel-mkl-static", "dep:intel-mkl-src", "blas-enabled"]
+accelerate = ["ndarray/blas", "dep:ndarray-linalg", "dep:accelerate-src", "dep:blas-src", "blas-src/accelerate", "blas-enabled"]
 
 # System BLAS - use pre-installed BLAS libraries (required for Windows)
-system = ["ndarray/blas", "ndarray-linalg", "openblas-src/system", "blas-enabled"]
+system = ["ndarray/blas", "dep:ndarray-linalg", "ndarray-linalg/openblas-system", "openblas-src/system", "blas-enabled"]
 
 # Internal feature to track if any BLAS implementation is enabled
 blas-enabled = []
