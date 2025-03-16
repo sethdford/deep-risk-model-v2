@@ -1,5 +1,3 @@
-use ndarray::ShapeError;
-use thiserror::Error;
 use anyhow;
 use std::error::Error as StdError;
 use std::fmt;
@@ -78,6 +76,9 @@ pub enum ModelError {
 
     /// Error when input is invalid
     InvalidInput(String),
+    
+    /// Error when a feature is not implemented
+    NotImplemented(String),
 }
 
 impl fmt::Display for ModelError {
@@ -97,6 +98,7 @@ impl fmt::Display for ModelError {
             ModelError::External(err) => write!(f, "External error: {}", err),
             ModelError::InitializationError(msg) => write!(f, "Initialization error: {}", msg),
             ModelError::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
+            ModelError::NotImplemented(msg) => write!(f, "Not implemented: {}", msg),
         }
     }
 }
