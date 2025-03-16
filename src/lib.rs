@@ -119,49 +119,55 @@ mod tests {
     use crate::error::ModelError;
     use ndarray::Array;
 
-    #[tokio::test]
-    async fn test_transformer_risk_model() -> Result<(), ModelError> {
-        let n_assets = 64;
-        let d_model = 64;
-        let n_heads = 8;
-        let d_ff = 256;
-        let n_layers = 3;
-        
-        let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
-        
-        let n_samples = 6;
-        let features = Array::zeros((n_samples, n_assets));
-        let returns = Array::zeros((n_samples, n_assets));
-        
-        let data = MarketData::new(returns, features);
-        let risk_factors = model.generate_risk_factors(&data).await?;
-        
-        // The output shape is [n_samples - max_seq_len + 1, d_model]
-        // With n_samples = 6 and max_seq_len = 5, we expect [2, 64]
-        assert_eq!(risk_factors.factors().shape(), &[2, d_model]);
-        assert_eq!(risk_factors.covariance().shape(), &[d_model, d_model]);
-        
-        Ok(())
+    #[test]
+    fn test_transformer_risk_model() -> Result<(), ModelError> {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let n_assets = 64;
+            let d_model = 64;
+            let n_heads = 8;
+            let d_ff = 256;
+            let n_layers = 3;
+            
+            let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
+            
+            let n_samples = 6;
+            let features = Array::zeros((n_samples, n_assets));
+            let returns = Array::zeros((n_samples, n_assets));
+            
+            let data = MarketData::new(returns, features);
+            let risk_factors = model.generate_risk_factors(&data).await?;
+            
+            // The output shape is [n_samples - max_seq_len + 1, d_model]
+            // With n_samples = 6 and max_seq_len = 5, we expect [2, 64]
+            assert_eq!(risk_factors.factors().shape(), &[2, d_model]);
+            assert_eq!(risk_factors.covariance().shape(), &[d_model, d_model]);
+            
+            Ok(())
+        })
     }
     
-    #[tokio::test]
-    async fn test_tft_risk_model() -> Result<(), ModelError> {
-        let n_assets = 100;
-        let n_factors = 5;
-        
-        let model = TFTRiskModel::new(n_assets, n_factors)?;
-        
-        let n_samples = 100;
-        let features = Array::zeros((n_samples, n_assets));
-        let returns = Array::zeros((n_samples, n_assets));
-        
-        let data = MarketData::new(returns, features);
-        let risk_factors = model.generate_risk_factors(&data).await?;
-        
-        assert_eq!(risk_factors.factors().shape()[0], n_samples);
-        assert_eq!(risk_factors.covariance().shape()[0], risk_factors.covariance().shape()[1]);
-        
-        Ok(())
+    #[test]
+    fn test_tft_risk_model() -> Result<(), ModelError> {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let n_assets = 100;
+            let n_factors = 5;
+            
+            let model = TFTRiskModel::new(n_assets, n_factors)?;
+            
+            let n_samples = 100;
+            let features = Array::zeros((n_samples, n_assets));
+            let returns = Array::zeros((n_samples, n_assets));
+            
+            let data = MarketData::new(returns, features);
+            let risk_factors = model.generate_risk_factors(&data).await?;
+            
+            assert_eq!(risk_factors.factors().shape()[0], n_samples);
+            assert_eq!(risk_factors.covariance().shape()[0], risk_factors.covariance().shape()[1]);
+            
+            Ok(())
+        })
     }
 }
 

@@ -40,7 +40,7 @@ ndarray-linalg = { version = "0.16", optional = true }
 # BLAS implementation options - only one will be used based on features
 openblas-src = { version = "0.10", optional = true, features = ["cblas"] }
 netlib-src = { version = "0.8", optional = true, features = ["cblas"] }
-intel-mkl-src = { version = "0.8", optional = true, features = ["cblas"] }
+intel-mkl-src = { version = "0.8", optional = true }
 accelerate-src = { version = "0.3", optional = true }
 
 # Async traits
