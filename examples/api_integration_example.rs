@@ -1,5 +1,5 @@
 use deep_risk_model::{error::ModelError, model::DeepRiskModel};
-use ndarray::{Array, Array3, ArrayD, IxDyn, Array2};
+use ndarray::{Array, Array2};
 use serde::{Deserialize, Serialize};
 use tokio;
 use std::time::Instant;
@@ -45,38 +45,6 @@ struct Response {
     covariance: Vec<Vec<f32>>,
 }
 
-fn array_to_vec(array: &ArrayD<f32>) -> Vec<Vec<f32>> {
-    let shape = array.shape();
-    let mut result = Vec::new();
-    
-    match shape.len() {
-        2 => {
-            // Handle 2D array directly
-            for i in 0..shape[0] {
-                let mut row = Vec::new();
-                for j in 0..shape[1] {
-                    row.push(array[[i, j]]);
-                }
-                result.push(row);
-            }
-        },
-        3 => {
-            // For 3D array, take the last 2D slice
-            let last_slice_idx = shape[0] - 1;
-            for i in 0..shape[1] {
-                let mut row = Vec::new();
-                for j in 0..shape[2] {
-                    row.push(array[[last_slice_idx, i, j]]);
-                }
-                result.push(row);
-            }
-        },
-        _ => panic!("Unsupported array dimension"),
-    }
-    
-    result
-}
-
 fn array2_to_vec(array: &Array2<f32>) -> Vec<Vec<f32>> {
     let (rows, cols) = array.dim();
     let mut result = Vec::new();
@@ -104,55 +72,15 @@ const N_ASSETS: usize = 10;
 #[cfg(not(feature = "no-blas"))]
 const N_FACTORS: usize = 5;
 
-async fn test_with_real_data(n_assets: usize, n_factors: usize, market_data: &MarketData) -> Result<(), Box<dyn std::error::Error>> {
-    let mut model = DeepRiskModel::new(n_assets, n_factors)?;
-    model.train(&market_data).await?;
-    
-    let factors = model.generate_risk_factors(&market_data).await?;
-    let covariance = model.estimate_covariance(&market_data).await?;
-    
-    println!("Generated factors shape: {:?}", factors.factors().shape());
-    println!("Estimated covariance shape: {:?}", covariance.shape());
-    
-    Ok(())
-}
-
-async fn test_performance(n_assets: usize, n_factors: usize, market_data: &MarketData) -> Result<(), Box<dyn std::error::Error>> {
-    let mut model = DeepRiskModel::new(n_assets, n_factors)?;
-    
-    // Train the model
-    let start = std::time::Instant::now();
-    model.train(&market_data).await?;
-    let training_time = start.elapsed();
-    println!("Training time: {:?}", training_time);
-    
-    // Generate factors
-    let start = std::time::Instant::now();
-    let factors = model.generate_risk_factors(&market_data).await?;
-    let factor_time = start.elapsed();
-    println!("Factor generation time: {:?}", factor_time);
-    println!("Generated factors shape: {:?}", factors.factors().shape());
-    
-    // Estimate covariance
-    let start = std::time::Instant::now();
-    let covariance = model.estimate_covariance(&market_data).await?;
-    let covariance_time = start.elapsed();
-    println!("Covariance estimation time: {:?}", covariance_time);
-    println!("Estimated covariance shape: {:?}", covariance.shape());
-    
-    Ok(())
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "no-blas")]
-    println!("Running in no-blas mode with reduced dimensions (3x3 matrices)");
+    println!("Running in no-blas mode with reduced dimensions");
     #[cfg(feature = "no-blas")]
     println!("Note: Performance will be significantly slower without BLAS");
     
     // Create synthetic market data
-    let mut rng = rand::thread_rng();
-    let features = Array2::random((N_SAMPLES, N_ASSETS), Normal::new(0.0, 1.0).unwrap());
+    let features = Array2::random((N_SAMPLES, N_ASSETS * 2), Normal::new(0.0, 1.0).unwrap());
     let returns = Array2::random((N_SAMPLES, N_ASSETS), Normal::new(0.0, 0.01).unwrap());
     let market_data = MarketData::new(returns, features);
 
@@ -161,11 +89,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut model = {
         // For no-blas builds, we need to create a minimal transformer config
         // to avoid using BLAS operations
-        let transformer_config = deep_risk_model::transformer::TransformerConfig {
-            d_model: N_ASSETS * 2, // Match the default in DeepRiskModel::new
-            max_seq_len: 3,        // Minimal sequence length for testing
-            n_heads: 2,            // Minimal number of heads
-            d_ff: 32,              // Minimal feed-forward dimension
+        let transformer_config = TransformerConfig {
+            d_model: N_ASSETS * 2, // Match the feature dimension
+            max_seq_len: 5,        // Minimal sequence length for testing
+            n_heads: 1,            // Minimal number of heads
+            d_ff: 8,               // Minimal feed-forward dimension
             n_layers: 1,           // Single layer transformer
             dropout: 0.0,          // No dropout
             num_static_features: 2,
@@ -173,8 +101,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             hidden_size: 2,        // Minimum hidden size
         };
         
-        // Create the model using the public constructor
-        DeepRiskModel::new(N_ASSETS, N_FACTORS)?
+        // Create the model using the custom configuration
+        DeepRiskModel::with_config(N_ASSETS, N_FACTORS, transformer_config)?
     };
 
     #[cfg(not(feature = "no-blas"))]
@@ -201,8 +129,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Error handling example
     println!("\nTesting error handling with incorrect data...");
     // Create data with mismatched dimensions - different number of samples
-    let incorrect_returns = Array2::random((40, N_ASSETS), Uniform::new(-0.01, 0.01));
-    let incorrect_features = Array2::random((50, N_ASSETS * 2), Uniform::new(-1.0, 1.0));
+    let incorrect_returns = Array2::random((N_SAMPLES / 2, N_ASSETS), Uniform::new(-0.01, 0.01));
+    let incorrect_features = Array2::random((N_SAMPLES / 2 + 5, N_ASSETS * 2), Uniform::new(-1.0, 1.0));
     let incorrect_market_data = MarketData::new(incorrect_returns, incorrect_features);
 
     match model.train(&incorrect_market_data).await {
