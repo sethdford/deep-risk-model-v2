@@ -19,6 +19,8 @@ Comprehensive documentation is available to help you get started:
 - [Use Cases](docs/USE_CASES.md) - Application scenarios
 - [Benchmarks](docs/BENCHMARKS.md) - Detailed performance metrics
 - [Sprint Backlog](docs/SPRINT_BACKLOG.md) - Development progress
+- [Academic Documentation](docs/ACADEMIC.md) - Formal mathematical description and theoretical foundations
+- [Technical Documentation](docs/TECHNICAL.md) - Comprehensive API reference and developer guides
 
 **API Documentation**: Run `cargo doc --open` for detailed API reference
 
