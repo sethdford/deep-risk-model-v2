@@ -7,6 +7,9 @@ fn main() {
         println!("cargo:rustc-cfg=feature=\"no-blas\"");
         println!("cargo:warning=Building without BLAS support (pure Rust implementation)");
         println!("cargo:warning=Note: Some tests and examples requiring matrix operations on large matrices will fail");
+        
+        // Explicitly disable any BLAS-related linking
+        println!("cargo:rustc-cfg=feature=\"no-blas-linking\"");
     } else {
         // Detect the operating system
         let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
