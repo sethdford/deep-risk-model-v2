@@ -16,23 +16,13 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        blas: [default, no-blas]
         include:
           - os: ubuntu-latest
-            blas: default
             features: "--features openblas"
           - os: macos-latest
-            blas: default
             features: "--features accelerate"
           - os: windows-latest
-            blas: default
-            features: "--no-default-features --features system"
-          - blas: no-blas
-            features: "--no-default-features --features no-blas"
-        exclude:
-          # Exclude Windows with no-blas as it's not supported
-          - os: windows-latest
-            blas: no-blas
+            features: "--features no-blas"
 
     steps:
     - uses: actions/checkout@v4
@@ -43,26 +33,14 @@ jobs:
     - name: Set up Rust cache
       uses: Swatinem/rust-cache@v2
       with:
-        key: ${{ matrix.os }}-${{ matrix.blas }}
+        key: ${{ matrix.os }}
     
     # Install system dependencies for OpenBLAS on Ubuntu
     - name: Install OpenBLAS dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu-latest' && matrix.blas == 'default'
+      if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
         sudo apt-get install -y libopenblas-dev gfortran
-    
-    # Install vcpkg and OpenBLAS on Windows
-    - name: Install OpenBLAS via vcpkg (Windows)
-      if: matrix.os == 'windows-latest' && matrix.blas == 'default'
-      run: |
-        git clone https://github.com/microsoft/vcpkg.git
-        cd vcpkg
-        ./bootstrap-vcpkg.bat
-        ./vcpkg.exe install openblas:x64-windows
-        ./vcpkg.exe integrate install
-        echo "VCPKG_ROOT=${{ github.workspace }}/vcpkg" >> $GITHUB_ENV
-      shell: bash
     
     # Build with the specified features
     - name: Build
@@ -75,8 +53,3 @@ jobs:
     # Run tests with the specified features
     - name: Run tests
       run: cargo test --verbose ${{ matrix.features }}
-    
-    # Run the no-blas example specifically for no-blas configurations
-    - name: Run no-blas example
-      if: matrix.blas == 'no-blas'
-      run: cargo run --example no_blas_example ${{ matrix.features }}

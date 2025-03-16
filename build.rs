@@ -48,16 +48,12 @@ fn main() {
                 println!("cargo:rustc-link-search=framework=/System/Library/Frameworks");
             },
             "windows" => {
-                // On Windows, use system BLAS (requires vcpkg)
-                println!("cargo:rustc-cfg=feature=\"system\"");
-                println!("cargo:rustc-cfg=feature=\"blas-enabled\"");
-                println!("cargo:warning=Using system BLAS via vcpkg on Windows");
-                println!("cargo:warning=Make sure you have installed OpenBLAS with vcpkg:");
+                // On Windows, use no-blas by default
+                println!("cargo:rustc-cfg=feature=\"no-blas\"");
+                println!("cargo:warning=Using pure Rust implementation on Windows by default");
+                println!("cargo:warning=For better performance, use the 'system' feature with vcpkg:");
                 println!("cargo:warning=  vcpkg install openblas:x64-windows");
                 println!("cargo:warning=  vcpkg integrate install");
-                
-                // Force the system feature for openblas-src on Windows
-                println!("cargo:rustc-cfg=feature=\"openblas-src/system\"");
             },
             _ => {
                 // On Linux and other platforms, use OpenBLAS by default
@@ -72,12 +68,6 @@ fn main() {
     } else {
         // A specific BLAS feature is enabled
         println!("cargo:rustc-cfg=feature=\"blas-enabled\"");
-    }
-    
-    // Special handling for Windows - always ensure system feature is used with openblas-src
-    if target_os == "windows" && (openblas_enabled || system_enabled) {
-        println!("cargo:warning=On Windows, using system feature with openblas-src");
-        println!("cargo:rustc-cfg=feature=\"openblas-src/system\"");
     }
     
     // Platform-specific optimizations and configurations
@@ -117,7 +107,7 @@ fn main() {
             }
         },
         "windows" => {
-            if system_enabled || openblas_enabled {
+            if system_enabled {
                 println!("cargo:warning=Using system BLAS on Windows (requires vcpkg)");
                 println!("cargo:warning=Make sure you have installed OpenBLAS with vcpkg:");
                 println!("cargo:warning=  vcpkg install openblas:x64-windows");

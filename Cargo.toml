@@ -81,7 +81,7 @@ sysinfo = "0.29"
 
 [features]
 # Default features - platform-specific implementation will be selected in build.rs
-default = ["no-blas"]
+default = []
 
 # Platform-specific BLAS implementations
 openblas = ["dep:ndarray-linalg", "ndarray/blas", "dep:openblas-src", "blas-enabled"]
@@ -101,9 +101,10 @@ no-blas = []
 # GPU feature - placeholder for future GPU support
 gpu = []  # Will include CUDA dependencies when they are properly implemented
 
-# Windows-specific default features
-[target.'cfg(target_os = "windows")'.dependencies]
-openblas-src = { version = "0.10", features = ["cblas", "system"], optional = true }
+# macOS-specific default features
+[target.'cfg(target_os = "macos")'.dependencies]
+accelerate-src = { version = "0.3", optional = true }
+blas-src = { version = "0.8", optional = true, features = ["accelerate"] }
 
 # Ensure tests always use no-blas for maximum compatibility
 [dev-dependencies.deep_risk_model]
@@ -133,9 +134,6 @@ mockall = "0.11"
 # BLAS dependencies for tests - use system feature on Windows
 [target.'cfg(not(target_os = "windows"))'.dev-dependencies]
 openblas-src = { version = "0.10", features = ["cblas"] }
-
-[target.'cfg(target_os = "windows")'.dev-dependencies]
-openblas-src = { version = "0.10", features = ["cblas", "system"] }
 
 [[bin]]
 name = "bootstrap"
