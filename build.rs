@@ -21,6 +21,9 @@ fn main() {
                 println!("cargo:rustc-cfg=feature=\"blas-enabled\"");
                 println!("cargo:warning=Using Apple's Accelerate framework for BLAS operations");
                 println!("cargo:rustc-link-lib=framework=Accelerate");
+                
+                // Explicitly set the framework path
+                println!("cargo:rustc-link-search=framework=/System/Library/Frameworks");
             },
             "windows" => {
                 // On Windows, use system BLAS (requires vcpkg)
@@ -75,8 +78,8 @@ fn main() {
                 println!("cargo:warning=Using Apple's Accelerate framework for optimal performance on macOS");
                 println!("cargo:rustc-link-lib=framework=Accelerate");
                 
-                // Explicitly set the RUSTFLAGS for linking with Accelerate
-                println!("cargo:rustc-env=RUSTFLAGS=-L framework=/System/Library/Frameworks");
+                // Explicitly set the framework path
+                println!("cargo:rustc-link-search=framework=/System/Library/Frameworks");
             } else if openblas_enabled {
                 println!("cargo:warning=Using OpenBLAS on macOS. Consider using the 'accelerate' feature for better performance");
                 
