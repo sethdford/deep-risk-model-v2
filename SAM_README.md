@@ -52,7 +52,7 @@ sam validate
 3. Build the SAM application:
 
 ```bash
-sam build --use-container
+sam build
 ```
 
 4. Deploy the SAM application:
@@ -78,6 +78,8 @@ This project includes a GitHub Actions workflow for automated deployment. To use
 
 Once deployed, the API will be available at the URL provided in the CloudFormation outputs. You can use it as follows:
 
+### Using cURL
+
 ```bash
 curl -X POST https://your-api-gateway-url/Prod/risk-factors \
   -H "Content-Type: application/json" \
@@ -94,6 +96,37 @@ The API will return a JSON response with the risk factors and covariance matrix:
   "factors": [...],
   "covariance": [...]
 }
+```
+
+### Using the Test Script
+
+We've included a Python script to test the API with generated sample data:
+
+1. Install the required Python packages:
+
+```bash
+pip install requests numpy matplotlib
+```
+
+2. Run the test script:
+
+```bash
+python scripts/test_api.py --api-url https://your-api-gateway-url/Prod/risk-factors
+```
+
+This will:
+- Generate sample market data
+- Call the API with the sample data
+- Display a summary of the results
+- Create visualizations of the risk factors and returns
+
+Additional options:
+```bash
+# Specify the number of time samples and assets
+python scripts/test_api.py --api-url https://your-api-gateway-url/Prod/risk-factors --samples 200 --assets 10
+
+# Disable plotting
+python scripts/test_api.py --api-url https://your-api-gateway-url/Prod/risk-factors --no-plot
 ```
 
 ## Cleanup
