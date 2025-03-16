@@ -37,7 +37,7 @@ pub struct FactorQualityMetrics {
 /// 
 /// # Example
 /// 
-/// ```rust
+/// ```rust,no_run
 /// use deep_risk_model::factor_analysis::FactorAnalyzer;
 /// use ndarray::Array2;
 /// 

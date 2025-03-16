@@ -19,6 +19,10 @@ use std::error::Error;
 ///     d_ff: 256,
 ///     dropout: 0.1,
 ///     n_layers: 3,
+///     max_seq_len: 100,
+///     num_static_features: 5,
+///     num_temporal_features: 10,
+///     hidden_size: 32,
 /// };
 /// ```
 #[derive(Debug, Clone)]

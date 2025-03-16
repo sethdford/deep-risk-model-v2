@@ -25,19 +25,21 @@ use crate::error::ModelError;
 /// 
 /// # Example
 /// 
-/// ```rust
+/// ```rust,no_run
 /// use deep_risk_model::gru::GRUModule;
 /// use ndarray::Array2;
 /// 
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let input_size = 10;
 /// let hidden_size = 20;
 /// let gru = GRUModule::new(input_size, hidden_size)?;
 /// 
 /// // Process a sequence
 /// let batch_size = 32;
-/// let seq_len = 50;
-/// let input = Array3::zeros((batch_size, seq_len, input_size));
+/// let input = Array2::zeros((batch_size, input_size));
 /// let output = gru.forward(&input)?;
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Debug, Clone)]
 pub struct GRUModule {

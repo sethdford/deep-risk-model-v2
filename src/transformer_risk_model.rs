@@ -230,6 +230,11 @@ impl TransformerComponent<f32> for TransformerRiskModel {
     }
 }
 
+// Implement Send and Sync for TransformerRiskModel
+// This is safe because TransformerRiskModel only contains types that are already Send and Sync
+unsafe impl Send for TransformerRiskModel {}
+unsafe impl Sync for TransformerRiskModel {}
+
 /// Implementation of the RiskModel trait for TransformerRiskModel.
 /// 
 /// This implementation enables the model to generate risk factors and

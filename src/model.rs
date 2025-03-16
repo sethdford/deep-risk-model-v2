@@ -21,7 +21,7 @@ use crate::factor_analysis::{FactorAnalyzer, FactorQualityMetrics};
 /// # Example
 /// 
 /// ```rust,no_run
-/// use deep_risk_model::{DeepRiskModel, types::{RiskModel, MarketData}};
+/// use deep_risk_model::prelude::{DeepRiskModel, RiskModel, MarketData};
 /// use ndarray::Array2;
 /// 
 /// #[tokio::main]

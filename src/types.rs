@@ -41,7 +41,7 @@ impl RiskFactors {
 /// # Example
 /// 
 /// ```rust,no_run
-/// use deep_risk_model::{RiskModel, types::{MarketData, RiskFactors}, error::ModelError};
+/// use deep_risk_model::prelude::{RiskModel, MarketData, RiskFactors, ModelError};
 /// use ndarray::Array2;
 /// 
 /// struct SimpleRiskModel {
