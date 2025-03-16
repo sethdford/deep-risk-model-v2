@@ -8,6 +8,7 @@ fn main() {
     // Detect the operating system
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     let is_windows = target_os == "windows";
+    let is_macos = target_os == "macos";
     
     // If no-blas is enabled, it takes precedence over any BLAS implementation
     if no_blas {
@@ -44,6 +45,13 @@ fn main() {
                 println!("cargo:rustc-cfg=feature=\"!system\"");
             }
         }
+        
+        // Special warning for macOS users
+        if is_macos {
+            println!("cargo:warning=Warning: The no-BLAS feature may encounter linking issues on macOS.");
+            println!("cargo:warning=For macOS, we recommend using the Accelerate framework instead:");
+            println!("cargo:warning=  cargo build --no-default-features --features accelerate");
+        }
     } else if blas_enabled {
         // Check if we're using Accelerate
         let use_accelerate = std::env::var("CARGO_FEATURE_ACCELERATE").is_ok();
@@ -66,7 +74,7 @@ fn main() {
             }
         }
         // Special handling for macOS
-        else if target_os == "macos" {
+        else if is_macos {
             if use_accelerate {
                 // Use Apple's Accelerate framework
                 println!("cargo:warning=Detected macOS with Accelerate feature, using Accelerate framework");

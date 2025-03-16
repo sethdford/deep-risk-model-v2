@@ -29,6 +29,9 @@ jobs:
           # Exclude Windows with no-blas as it's not supported without vcpkg
           - os: windows-latest
             blas: without-blas
+          # Exclude macOS with no-blas as it has linking issues
+          - os: macos-latest
+            blas: without-blas
 
     steps:
     - uses: actions/checkout@v4

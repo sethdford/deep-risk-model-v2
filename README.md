@@ -241,6 +241,13 @@ cargo build --no-default-features --features no-blas
 > This is due to limitations in how the `openblas-src` crate handles Windows builds. If you need to 
 > build on Windows, please use vcpkg with the OpenBLAS feature or use WSL (Windows Subsystem for Linux).
 
+> **Note for macOS Users**: The no-BLAS feature may encounter linking issues on macOS. This is because 
+> even when using the no-BLAS feature, some BLAS symbols are still being referenced during linking.
+> For macOS, we recommend using the Accelerate framework instead:
+> ```bash
+> cargo build --no-default-features --features accelerate
+> ```
+
 This allows the library to be used in environments where installing BLAS dependencies is not possible or practical, such as WebAssembly targets or certain embedded systems.
 
 ## 🛠️ Technical Stack
