@@ -61,6 +61,16 @@ jobs:
           cd docs
           ruby generate_search_data.rb
       
+      - name: Debug Jekyll environment
+        run: |
+          cd docs
+          echo "Current directory: $(pwd)"
+          echo "Files in current directory:"
+          ls -la
+          echo "Jekyll version:"
+          bundle exec jekyll --version
+          echo "Base path: ${{ steps.pages.outputs.base_path }}"
+      
       - name: Build with Jekyll
         run: |
           cd docs
@@ -68,10 +78,22 @@ jobs:
         env:
           JEKYLL_ENV: production
       
+      - name: Debug _site directory
+        run: |
+          echo "Checking if _site directory exists:"
+          ls -la docs
+          echo "Contents of _site directory (if it exists):"
+          if [ -d "docs/_site" ]; then
+            ls -la docs/_site
+          else
+            echo "_site directory not found!"
+          fi
+      
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/_site
+          retention-days: 1
 
   deploy:
     environment:
