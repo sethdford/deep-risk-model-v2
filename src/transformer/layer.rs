@@ -151,7 +151,7 @@ impl TransformerLayer {
 }
 
 impl TransformerComponent<f32> for TransformerLayer {
-    fn forward(&self, x: &Array2<f32>) -> Result<Array2<f32>, Box<dyn Error + Send + Sync>> {
+    fn forward(&self, x: &Array2<f32>) -> Result<Array2<f32>, ModelError> {
         // Layer normalization and attention
         let norm1 = self.layer_norm(x)?;
         let attended = self.attention.forward(&norm1)?;

@@ -39,7 +39,7 @@ use crate::error::ModelError;
 /// let input = Array3::zeros((batch_size, seq_len, input_size));
 /// let output = gru.forward(&input)?;
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GRUModule {
     pub input_size: usize,
     pub hidden_size: usize,
@@ -48,6 +48,12 @@ pub struct GRUModule {
     pub b_ih: Array2<f32>,
     pub b_hh: Array2<f32>,
 }
+
+// Implement Send and Sync for GRUModule
+// This is safe because GRUModule only contains primitive types (usize)
+// and ndarray::Array2<f32> which are already Send and Sync
+unsafe impl Send for GRUModule {}
+unsafe impl Sync for GRUModule {}
 
 impl GRUModule {
     /// Create a new GRU module

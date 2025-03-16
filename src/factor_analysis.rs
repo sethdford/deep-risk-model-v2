@@ -48,7 +48,7 @@ pub struct FactorQualityMetrics {
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FactorAnalyzer {
     /// Minimum explained variance ratio to keep a factor
     pub(crate) min_explained_variance: f32,
@@ -57,6 +57,12 @@ pub struct FactorAnalyzer {
     /// Significance level for t-tests
     pub(crate) significance_level: f32,
 }
+
+// Implement Send and Sync for FactorAnalyzer
+// This is safe because FactorAnalyzer only contains primitive types (f32)
+// that are already Send and Sync
+unsafe impl Send for FactorAnalyzer {}
+unsafe impl Sync for FactorAnalyzer {}
 
 impl FactorAnalyzer {
     /// Creates a new FactorAnalyzer with specified quality thresholds.

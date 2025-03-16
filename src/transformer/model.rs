@@ -24,7 +24,7 @@ impl Transformer {
 }
 
 impl TransformerComponent<f32> for Transformer {
-    fn forward(&self, x: &Array2<f32>) -> Result<Array2<f32>, Box<dyn Error + Send + Sync>> {
+    fn forward(&self, x: &Array2<f32>) -> Result<Array2<f32>, ModelError> {
         let mut output = x.clone();
         
         for layer in &self.layers {

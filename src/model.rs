@@ -92,7 +92,7 @@ impl DeepRiskModel {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl RiskModel for DeepRiskModel {
     async fn train(&mut self, data: &MarketData) -> Result<(), ModelError> {
         // Validate input dimensions

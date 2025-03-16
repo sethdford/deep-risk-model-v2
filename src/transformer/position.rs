@@ -53,15 +53,15 @@ impl PositionalEncoder {
 }
 
 impl TransformerComponent<f32> for PositionalEncoder {
-    fn forward(&self, x: &Array2<f32>) -> Result<Array2<f32>, Box<dyn Error + Send + Sync>> {
+    fn forward(&self, x: &Array2<f32>) -> Result<Array2<f32>, ModelError> {
         let shape = x.shape();
         let batch_size = shape[0];
         let d_model = shape[1];
         
         if d_model != self.d_model {
-            return Err(Box::new(ModelError::InvalidDimension(
+            return Err(ModelError::InvalidDimension(
                 format!("Expected d_model {}, got {}", self.d_model, d_model)
-            )));
+            ));
         }
         
         // Create output with same shape as input

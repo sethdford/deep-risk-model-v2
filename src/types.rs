@@ -48,21 +48,22 @@ impl RiskFactors {
 ///     factors: Array2<f32>,
 /// }
 /// 
-/// #[async_trait]
+/// #[async_trait::async_trait]
 /// impl RiskModel for SimpleRiskModel {
 ///     async fn train(&mut self, data: &MarketData) -> Result<(), ModelError> {
-///         // Train model using historical returns
+///         // Training logic here
 ///         Ok(())
 ///     }
-/// 
+///     
 ///     async fn generate_risk_factors(&self, data: &MarketData) -> Result<RiskFactors, ModelError> {
-///         // Generate risk factors from new data
-///         let covariance = Array2::eye(self.factors.shape()[1]);
-///         Ok(RiskFactors::new(self.factors.clone(), covariance))
+///         // Generate risk factors
+///         let factors = self.factors.clone();
+///         let covariance = Array2::eye(factors.shape()[1]);
+///         Ok(RiskFactors::new(factors, covariance))
 ///     }
-/// 
+///     
 ///     async fn estimate_covariance(&self, data: &MarketData) -> Result<Array2<f32>, ModelError> {
-///         // Estimate covariance matrix from risk factors
+///         // Estimate covariance matrix
 ///         Ok(Array2::eye(self.factors.shape()[1]))
 ///     }
 /// }

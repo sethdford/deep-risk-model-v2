@@ -211,6 +211,42 @@ impl VariableSelectionNetwork {
     }
 }
 
+impl TransformerComponent<f32> for VariableSelectionNetwork {
+    fn forward(&self, x: &Array2<f32>) -> Result<Array2<f32>, ModelError> {
+        let (batch_size, num_features) = x.dim();
+        
+        // Process features through GRU
+        let processed = self.gru.forward(x)?;
+        
+        // Compute selection weights
+        let mut selected = Array2::zeros((batch_size, num_features));
+        
+        for i in 0..batch_size {
+            // Get GRU output for this timestep
+            let h = processed.slice(s![i..i+1, ..]);
+            
+            // Compute selection scores
+            let mut scores = h.dot(&self.selection_weights);
+            scores += &self.selection_bias;
+            
+            // Apply softmax
+            let max_score = scores.fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+            // Convert to 1D array before applying mapv
+            let scores_1d = scores.into_shape(num_features).unwrap();
+            let exp_scores: Array1<f32> = scores_1d.mapv(|x| (x - max_score).exp());
+            let sum_exp = exp_scores.sum();
+            let weights = exp_scores / sum_exp;
+            
+            // Apply selection weights
+            for k in 0..num_features {
+                selected[[i, k]] = weights[k] * x[[i, k]];
+            }
+        }
+        
+        Ok(selected)
+    }
+}
+
 /// Gating Layer for controlling information flow
 #[derive(Debug)]
 pub struct GatingLayer {

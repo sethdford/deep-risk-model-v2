@@ -88,7 +88,7 @@ impl MultiHeadAttention {
 }
 
 impl TransformerComponent<f32> for MultiHeadAttention {
-    fn forward(&self, x: &Array2<f32>) -> Result<Array2<f32>, Box<dyn Error + Send + Sync>> {
+    fn forward(&self, x: &Array2<f32>) -> Result<Array2<f32>, ModelError> {
         let batch_size = x.shape()[0];
         
         // Linear projections

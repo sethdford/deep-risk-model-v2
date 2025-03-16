@@ -216,8 +216,8 @@ impl TransformerComponent<f32> for TransformerRiskModel {
     /// 
     /// # Returns
     /// 
-    /// * `Result<Array2<f32>, Box<dyn std::error::Error + Send + Sync>>` - Processed features
-    fn forward(&self, features: &Array2<f32>) -> Result<Array2<f32>, Box<dyn std::error::Error + Send + Sync>> {
+    /// * `Result<Array2<f32>, ModelError>` - Processed features
+    fn forward(&self, features: &Array2<f32>) -> Result<Array2<f32>, ModelError> {
         // Add positional encoding
         let mut output = self.pos_encoder.forward(features)?;
         

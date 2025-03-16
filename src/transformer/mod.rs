@@ -59,41 +59,10 @@ impl Default for TransformerConfig {
     }
 }
 
-/// Core trait for transformer-based components in the risk model.
+/// Core trait for transformer components.
 /// 
-/// This trait defines the interface for transformer components that process
-/// financial time series data. Implementations should handle:
-/// 
-/// - Self-attention mechanisms for temporal dependencies
-/// - Feature transformations and embeddings
-/// - Forward propagation through the network
-/// 
-/// # Type Parameters
-/// 
-/// * `T` - The numeric type for computations (typically f32)
-/// 
-/// # Examples
-/// 
-/// Implementing the trait:
-/// ```rust
-/// use deep_risk_model::transformer::{TransformerComponent, TransformerConfig};
-/// use ndarray::Array2;
-/// 
-/// struct MyTransformer {
-///     config: TransformerConfig,
-/// }
-/// 
-/// impl TransformerComponent<f32> for MyTransformer {
-///     fn forward(&self, x: &Array2<f32>) -> Result<Array2<f32>, Box<dyn std::error::Error + Send + Sync>> {
-///         // Process input through transformer layers
-///         Ok(x.clone())
-///     }
-/// 
-///     fn config(&self) -> &TransformerConfig {
-///         &self.config
-///     }
-/// }
-/// ```
+/// This trait defines the interface that all transformer components must implement.
+/// It provides a method for forward propagation through the transformer network.
 pub trait TransformerComponent<T> {
     /// Performs forward propagation through the transformer network.
     /// 
@@ -103,8 +72,8 @@ pub trait TransformerComponent<T> {
     /// 
     /// # Returns
     /// 
-    /// * `Result<Array2<T>, Box<dyn Error + Send + Sync>>` - Output tensor after transformer processing
-    fn forward(&self, x: &Array2<T>) -> Result<Array2<T>, Box<dyn Error + Send + Sync>>;
+    /// * `Result<Array2<T>, ModelError>` - Output tensor after transformer processing
+    fn forward(&self, x: &Array2<T>) -> Result<Array2<T>, ModelError>;
 }
 
 /// Utility functions for transformer components
