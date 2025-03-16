@@ -75,7 +75,7 @@ impl GPUDeepRiskModel {
         gpu_config: Option<GPUConfig>,
     ) -> Result<Self, ModelError> {
         // Default configuration values
-        let d_model = n_assets; // Use n_assets as d_model by default
+        let d_model = n_assets * 2; // Use n_assets * 2 as d_model by default
         let n_heads = 8;
         let d_ff = 256;
         let n_layers = 3;
@@ -107,9 +107,9 @@ impl GPUDeepRiskModel {
         n_layers: usize,
         gpu_config: Option<GPUConfig>,
     ) -> Result<Self, ModelError> {
-        if d_model < n_assets {
-            return Err(ModelError::InvalidInput(
-                format!("d_model ({}) must be at least as large as n_assets ({})", d_model, n_assets)
+        if d_model != n_assets * 2 {
+            return Err(ModelError::InvalidDimension(
+                format!("Expected d_model {}, got {}", n_assets * 2, d_model)
             ));
         }
         
@@ -149,10 +149,9 @@ impl GPUDeepRiskModel {
         config: TransformerConfig,
         gpu_config: Option<GPUConfig>,
     ) -> Result<Self, ModelError> {
-        if config.d_model < n_assets {
-            return Err(ModelError::InvalidInput(
-                format!("config.d_model ({}) must be at least as large as n_assets ({})", 
-                        config.d_model, n_assets)
+        if config.d_model != n_assets * 2 {
+            return Err(ModelError::InvalidDimension(
+                format!("Expected d_model {}, got {}", n_assets * 2, config.d_model)
             ));
         }
         
@@ -220,9 +219,16 @@ impl RiskModel for GPUDeepRiskModel {
     }
     
     async fn generate_risk_factors(&self, data: &MarketData) -> Result<RiskFactors, ModelError> {
-        if data.features().shape()[1] != self.n_assets {
+        if data.returns().shape()[1] != self.n_assets {
             return Err(ModelError::DimensionMismatch(
-                "Market data must have n_assets columns".into()
+                "Returns must have n_assets columns".into()
+            ));
+        }
+        
+        if data.features().shape()[1] != self.n_assets * 2 {
+            return Err(ModelError::DimensionMismatch(
+                format!("Features must have n_assets * 2 columns (expected {}, got {})",
+                    self.n_assets * 2, data.features().shape()[1])
             ));
         }
         
@@ -246,9 +252,16 @@ impl RiskModel for GPUDeepRiskModel {
     }
     
     async fn estimate_covariance(&self, data: &MarketData) -> Result<Array2<f32>, ModelError> {
-        if data.features().shape()[1] != self.n_assets {
+        if data.returns().shape()[1] != self.n_assets {
             return Err(ModelError::DimensionMismatch(
-                "Market data must have n_assets columns".into()
+                "Returns must have n_assets columns".into()
+            ));
+        }
+        
+        if data.features().shape()[1] != self.n_assets * 2 {
+            return Err(ModelError::DimensionMismatch(
+                format!("Features must have n_assets * 2 columns (expected {}, got {})",
+                    self.n_assets * 2, data.features().shape()[1])
             ));
         }
         
@@ -313,10 +326,16 @@ mod tests {
         
         #[cfg(not(feature = "no-blas"))]
         {
-            let model = GPUDeepRiskModel::new(64, 5, None)?;
-            let features = Array::random((100, 64), StandardNormal);
-            let returns = Array::random((100, 64), StandardNormal);
+            let n_assets = 64;
+            let model = GPUDeepRiskModel::new(n_assets, 5, None)?;
+            // Use at least 2 samples to avoid covariance computation error
+            let n_samples = 100;
+            let features = Array::random((n_samples, n_assets * 2), StandardNormal);
+            let returns = Array::random((n_samples, n_assets), StandardNormal);
             let data = MarketData::new(returns, features);
+            
+            // Ensure we have at least 2 samples for covariance computation
+            assert!(data.returns().shape()[0] >= 2);
             
             let factors = model.generate_risk_factors(&data).await?;
             assert!(factors.factors().shape()[1] <= 5); // Should have at most n_factors columns
@@ -336,10 +355,16 @@ mod tests {
         
         #[cfg(not(feature = "no-blas"))]
         {
-            let model = GPUDeepRiskModel::new(64, 5, None)?;
-            let features = Array::random((100, 64), StandardNormal);
-            let returns = Array::random((100, 64), StandardNormal);
+            let n_assets = 64;
+            let model = GPUDeepRiskModel::new(n_assets, 5, None)?;
+            // Use at least 2 samples to avoid covariance computation error
+            let n_samples = 100;
+            let features = Array::random((n_samples, n_assets * 2), StandardNormal);
+            let returns = Array::random((n_samples, n_assets), StandardNormal);
             let data = MarketData::new(returns, features);
+            
+            // Ensure we have at least 2 samples for covariance computation
+            assert!(data.returns().shape()[0] >= 2);
             
             let metrics = model.get_factor_metrics(&data).await?;
             assert!(!metrics.is_empty());
@@ -374,7 +399,7 @@ mod tests {
             let cpu_model = DeepRiskModel::new(n_assets, n_factors)?;
             
             // Generate test data
-            let features = Array::random((n_samples, n_assets), StandardNormal);
+            let features = Array::random((n_samples, n_assets * 2), StandardNormal);
             let returns = Array::random((n_samples, n_assets), StandardNormal);
             let data = MarketData::new(returns, features);
             

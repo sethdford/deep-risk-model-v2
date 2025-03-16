@@ -85,6 +85,26 @@ impl DeepRiskModel {
         })
     }
 
+    /// Create a new deep risk model with a custom transformer configuration
+    pub fn with_config(n_assets: usize, n_factors: usize, config: TransformerConfig) -> Result<Self, ModelError> {
+        // Validate that d_model matches n_assets * 2
+        if config.d_model != n_assets * 2 {
+            return Err(ModelError::InvalidDimension(
+                format!("Expected d_model {}, got {}", n_assets * 2, config.d_model)
+            ));
+        }
+        
+        let transformer = TransformerRiskModel::with_config(config)?;
+        let factor_analyzer = FactorAnalyzer::new(0.5, 5.0, 0.05);
+        
+        Ok(Self {
+            n_assets,
+            n_factors,
+            transformer,
+            factor_analyzer,
+        })
+    }
+
     /// Get factor quality metrics
     pub async fn get_factor_metrics(&self, data: &MarketData) -> Result<Vec<FactorQualityMetrics>, ModelError> {
         let risk_factors = self.transformer.generate_risk_factors(data).await?;
@@ -210,9 +230,10 @@ mod tests {
         
         #[cfg(not(feature = "no-blas"))]
         {
-            let model = DeepRiskModel::new(64, 5)?;
-            let features = Array::random((100, 64), StandardNormal);
-            let returns = Array::random((100, 64), StandardNormal);
+            let n_assets = 64;
+            let model = DeepRiskModel::new(n_assets, 5)?;
+            let features = Array::random((100, n_assets * 2), StandardNormal);
+            let returns = Array::random((100, n_assets), StandardNormal);
             let data = MarketData::new(returns, features);
             
             let factors = model.generate_risk_factors(&data).await?;
@@ -233,9 +254,10 @@ mod tests {
         
         #[cfg(not(feature = "no-blas"))]
         {
-            let model = DeepRiskModel::new(64, 5)?;
-            let features = Array::random((100, 64), StandardNormal);
-            let returns = Array::random((100, 64), StandardNormal);
+            let n_assets = 64;
+            let model = DeepRiskModel::new(n_assets, 5)?;
+            let features = Array::random((100, n_assets * 2), StandardNormal);
+            let returns = Array::random((100, n_assets), StandardNormal);
             let data = MarketData::new(returns, features);
             
             let metrics = model.get_factor_metrics(&data).await?;
@@ -262,17 +284,18 @@ mod tests {
         
         #[cfg(not(feature = "no-blas"))]
         {
-            let model = DeepRiskModel::new(64, 5)?;
-            let features = Array::random((100, 64), StandardNormal);
-            let returns = Array::random((100, 64), StandardNormal);
+            let n_assets = 64;
+            let model = DeepRiskModel::new(n_assets, 5)?;
+            let features = Array::random((100, n_assets * 2), StandardNormal);
+            let returns = Array::random((100, n_assets), StandardNormal);
             let data = MarketData::new(returns, features);
             
             let covariance = model.estimate_covariance(&data).await?;
-            assert_eq!(covariance.shape(), &[64, 64]);
+            assert_eq!(covariance.shape(), &[n_assets, n_assets]);
             
             // Check symmetry
-            for i in 0..64 {
-                for j in 0..64 {
+            for i in 0..n_assets {
+                for j in 0..n_assets {
                     assert!((covariance[[i, j]] - covariance[[j, i]]).abs() < 1e-6);
                 }
             }
