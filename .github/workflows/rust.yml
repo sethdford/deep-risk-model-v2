@@ -15,14 +15,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
         include:
           - os: ubuntu-latest
             features: "--features openblas"
           - os: macos-latest
             features: "--features accelerate"
-          - os: windows-latest
-            features: "--features no-blas"
 
     steps:
     - uses: actions/checkout@v4

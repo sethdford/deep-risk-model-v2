@@ -6,11 +6,9 @@ fn main() {
     let openblas_enabled = std::env::var("CARGO_FEATURE_OPENBLAS").is_ok();
     let accelerate_enabled = std::env::var("CARGO_FEATURE_ACCELERATE").is_ok();
     let intel_mkl_enabled = std::env::var("CARGO_FEATURE_INTEL_MKL").is_ok();
-    let system_enabled = std::env::var("CARGO_FEATURE_SYSTEM").is_ok();
     let no_blas_enabled = std::env::var("CARGO_FEATURE_NO_BLAS").is_ok();
     
-    let any_blas_feature_enabled = openblas_enabled || accelerate_enabled || 
-                                  intel_mkl_enabled || system_enabled;
+    let any_blas_feature_enabled = openblas_enabled || accelerate_enabled || intel_mkl_enabled;
     
     // Handle no-blas feature first - this takes precedence over other features
     if no_blas_enabled {
@@ -26,7 +24,6 @@ fn main() {
             println!("cargo:rustc-cfg=feature=\"!openblas\"");
             println!("cargo:rustc-cfg=feature=\"!accelerate\"");
             println!("cargo:rustc-cfg=feature=\"!intel-mkl\"");
-            println!("cargo:rustc-cfg=feature=\"!system\"");
             println!("cargo:rustc-cfg=feature=\"!blas-enabled\"");
         }
         
@@ -46,14 +43,6 @@ fn main() {
                 
                 // Explicitly set the framework path
                 println!("cargo:rustc-link-search=framework=/System/Library/Frameworks");
-            },
-            "windows" => {
-                // On Windows, use no-blas by default
-                println!("cargo:rustc-cfg=feature=\"no-blas\"");
-                println!("cargo:warning=Using pure Rust implementation on Windows by default");
-                println!("cargo:warning=For better performance, use the 'system' feature with vcpkg:");
-                println!("cargo:warning=  vcpkg install openblas:x64-windows");
-                println!("cargo:warning=  vcpkg integrate install");
             },
             _ => {
                 // On Linux and other platforms, use OpenBLAS by default
@@ -104,17 +93,6 @@ fn main() {
                     println!("cargo:warning=Could not find OpenBLAS in standard locations");
                     println!("cargo:warning=You may need to install it: brew install openblas");
                 }
-            }
-        },
-        "windows" => {
-            if system_enabled {
-                println!("cargo:warning=Using system BLAS on Windows (requires vcpkg)");
-                println!("cargo:warning=Make sure you have installed OpenBLAS with vcpkg:");
-                println!("cargo:warning=  vcpkg install openblas:x64-windows");
-                println!("cargo:warning=  vcpkg integrate install");
-                
-                // Force the system feature for openblas-src on Windows
-                println!("cargo:rustc-cfg=feature=\"openblas-src/system\"");
             }
         },
         _ => {
