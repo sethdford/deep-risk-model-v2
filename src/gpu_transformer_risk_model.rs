@@ -93,7 +93,7 @@ impl GPUTransformerRiskModel {
             d_ff,
             n_layers,
             dropout: 0.1,
-            max_seq_len: 100,
+            max_seq_len: 20,
             num_static_features: d_model,
             num_temporal_features: d_model,
             hidden_size: d_model / 2,
@@ -111,7 +111,7 @@ impl GPUTransformerRiskModel {
             )?);
         }
         
-        let pos_encoder = PositionalEncoder::new(d_model, 100); // Default max_seq_len
+        let pos_encoder = PositionalEncoder::new(d_model, 20);
         
         Ok(Self {
             layers,
