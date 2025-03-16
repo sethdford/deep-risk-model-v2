@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 //! Deep Risk Model - A Rust library for financial risk modeling using deep learning
 //! 
 //! This library provides tools for analyzing and modeling financial risk using advanced deep learning
@@ -8,6 +10,11 @@
 //! - Factor Analysis for risk decomposition
 //! - Graph Attention Networks (GAT) for asset relationships
 //! - Gated Recurrent Units (GRU) for temporal dependencies
+//! - Market Regime Detection using Hidden Markov Models
+//! - Regime-Aware Risk Models for adaptive risk estimation
+//! - Backtesting framework for model evaluation
+//! - GPU acceleration for high-performance risk modeling
+//! - Quantization for model compression and inference acceleration
 //! 
 //! # Main Components
 //! 
@@ -16,54 +23,88 @@
 //! - [`TFTRiskModel`]: Risk modeling using temporal fusion transformer
 //! - [`FactorAnalyzer`]: Advanced factor analysis and quality metrics
 //! - [`RiskModel`]: Trait defining the interface for all risk models
+//! - [`MarketRegimeDetector`]: Hidden Markov Model for market regime detection
+//! - [`RegimeAwareRiskModel`]: Risk model that adapts to different market regimes
+//! - [`Backtest`]: Framework for backtesting risk models
+//! - [`GPUDeepRiskModel`]: GPU-accelerated version of the deep risk model
+//! - [`Quantizable`]: Trait for models that support quantization
 //! 
 //! # Example
 //! 
-//! ```rust
-//! use deep_risk_model::{DeepRiskModel, MarketData, RiskModel};
+//! ```rust,no_run
+//! use deep_risk_model::prelude::{DeepRiskModel, MarketData, RiskModel};
 //! use ndarray::Array2;
 //! 
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Initialize model
-//!     let mut model = DeepRiskModel::new(10, 5)?;
-//!     
-//!     // Prepare market data
-//!     let features = Array2::zeros((100, 10));
-//!     let returns = Array2::zeros((100, 10));
-//!     let data = MarketData::new(returns, features);
-//!     
-//!     // Train model and generate risk factors
-//!     model.train(&data).await?;
-//!     let risk_factors = model.generate_risk_factors(&data).await?;
-//!     
-//!     // Estimate covariance matrix
-//!     let covariance = model.estimate_covariance(&data).await?;
-//!     
-//!     Ok(())
-//! }
-
-#![recursion_limit = "32768"]
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a model for 64 assets with 5 risk factors
+//! let mut model = DeepRiskModel::new(64, 5)?;
+//! 
+//! // Generate synthetic market data
+//! let features = Array2::<f32>::zeros((100, 64));
+//! let returns = Array2::<f32>::zeros((100, 64));
+//! let market_data = MarketData::new(returns, features);
+//! 
+//! // Train the model
+//! model.train(&market_data).await?;
+//! 
+//! // Generate risk factors
+//! let risk_factors = model.generate_risk_factors(&market_data).await?;
+//! 
+//! // Estimate covariance matrix
+//! let covariance = model.estimate_covariance(&market_data).await?;
+//! # Ok(())
+//! # }
 
 pub mod error;
-pub mod gat;
+pub mod factor_analysis;
 pub mod gru;
 pub mod model;
+pub mod regime;
+pub mod regime_risk_model;
 pub mod transformer;
 pub mod transformer_risk_model;
 pub mod tft_risk_model;
 pub mod types;
 pub mod utils;
-pub mod factor_analysis;
+pub mod backtest;
+pub mod stress_testing;
+
+// GPU acceleration modules
+pub mod gpu;
+pub mod gpu_transformer_risk_model;
+pub mod gpu_model;
+
+// Model compression and optimization
+pub mod quantization;
+pub mod memory_opt;
 
 // Public exports
-pub use error::ModelError;
-pub use model::DeepRiskModel;
-pub use transformer::TransformerConfig;
-pub use transformer_risk_model::TransformerRiskModel;
-pub use tft_risk_model::TFTRiskModel;
-pub use types::{MarketData, RiskFactors, RiskModel, ModelConfig, MCPConfig};
-pub use factor_analysis::{FactorAnalyzer, FactorQualityMetrics};
+pub mod prelude {
+    pub use crate::error::ModelError;
+    pub use crate::model::DeepRiskModel;
+    pub use crate::transformer::TransformerConfig;
+    pub use crate::transformer_risk_model::TransformerRiskModel;
+    pub use crate::tft_risk_model::TFTRiskModel;
+    pub use crate::types::{MarketData, RiskFactors, RiskModel, ModelConfig, MCPConfig};
+    pub use crate::factor_analysis::{FactorAnalyzer, FactorQualityMetrics};
+    pub use crate::regime::{MarketRegimeDetector, RegimeType, RegimeConfig};
+    pub use crate::regime_risk_model::{RegimeAwareRiskModel, RegimeParameters};
+    pub use crate::backtest::{Backtest, BacktestResults, ScenarioGenerator, HistoricalScenarioGenerator, StressScenarioGenerator};
+    pub use crate::stress_testing::{EnhancedStressScenarioGenerator, StressTestExecutor, StressTestResults, 
+                            StressScenario, HistoricalPeriod, ScenarioCombinationSettings, 
+                            StressTestSettings, ReportDetail, ScenarioComparison};
+    
+    // GPU acceleration types
+    pub use crate::gpu::{ComputeDevice, GPUConfig};
+    pub use crate::gpu_transformer_risk_model::GPUTransformerRiskModel;
+    pub use crate::gpu_model::GPUDeepRiskModel;
+    
+    // Quantization types
+    pub use crate::quantization::{Quantizable, QuantizationConfig, QuantizationPrecision, Quantizer};
+    
+    // Memory optimization types
+    pub use crate::memory_opt::{MemoryConfig, SparseTensor, ChunkedProcessor, GradientCheckpointer, MemoryMappedArray, MemoryPool};
+}
 
 // Re-export utilities
 pub mod array_utils {

@@ -883,3 +883,233 @@ async def calculate_portfolio_risk(request: RiskRequest):
 | Basic | 60 | 1,000 | 500 |
 | Pro | 300 | 5,000 | 1,000 |
 | Enterprise | Custom | Custom | Custom | 
+
+## 8. Memory Optimization Use Cases
+
+### 8.1 Large-Scale Model Deployment
+```rust
+use deep_risk_model::prelude::{
+    TransformerRiskModel, MemoryConfig, RiskModel, MarketData
+};
+
+// Create a large model
+let d_model = 256;
+let n_heads = 16;
+let d_ff = 1024;
+let n_layers = 6;
+
+// Configure memory optimization
+let memory_config = MemoryConfig {
+    use_sparse_tensors: true,
+    sparsity_threshold: 0.1,
+    use_chunked_processing: true,
+    chunk_size: 1000,
+    ..Default::default()
+};
+
+// Create and configure model
+let mut model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
+model.set_memory_config(memory_config);
+
+// Sparsify model weights
+model.sparsify(0.1)?;
+
+// Check memory savings
+if let Some((dense_size, sparse_size, ratio)) = model.sparse_memory_savings() {
+    println!("Memory reduction: {:.1}x (from {} to {} bytes)", 
+             ratio, dense_size, sparse_size);
+}
+
+// Process market data
+let risk_factors = model.generate_risk_factors(&market_data).await?;
+```
+
+### 8.2 Processing Very Large Datasets
+```rust
+use deep_risk_model::prelude::{
+    DeepRiskModel, MemoryConfig, ChunkedProcessor, RiskModel
+};
+use ndarray::Array2;
+
+// Create a model for processing large datasets
+let model = DeepRiskModel::new(100, 5)?;
+
+// Configure chunked processing
+let config = MemoryConfig {
+    use_chunked_processing: true,
+    chunk_size: 5000,
+    ..Default::default()
+};
+
+// Create chunked processor
+let mut processor = ChunkedProcessor::new(config.clone(), 1_000_000);
+
+// Load data in chunks and process
+let features = load_large_dataset("features.csv")?;
+let results = processor.process_in_chunks(&features.view(), |chunk| {
+    // Process each chunk
+    println!("Processing chunk: {} samples", chunk.shape()[0]);
+    let chunk_result = process_chunk(model, chunk)?;
+    Ok(chunk_result)
+})?;
+
+// Combine results
+let combined_result = combine_results(results);
+```
+
+### 8.3 Memory-Efficient Training
+```rust
+use deep_risk_model::prelude::{
+    TransformerRiskModel, MemoryConfig, GradientCheckpointer
+};
+
+// Configure gradient checkpointing
+let checkpoint_config = MemoryConfig {
+    use_checkpointing: true,
+    checkpoint_segments: 4,
+    ..Default::default()
+};
+
+// Create checkpointer
+let checkpointer = GradientCheckpointer::new(checkpoint_config);
+
+// Process long sequence with checkpointing
+let result = checkpointer.process_sequence(&long_sequence.view(), |segment| {
+    // Process each segment
+    println!("Processing segment: {:?}", segment.shape());
+    let segment_result = process_segment(segment)?;
+    Ok(segment_result)
+})?;
+```
+
+### 8.4 Edge Deployment with Quantization
+```rust
+use deep_risk_model::prelude::{
+    TransformerRiskModel, QuantizationConfig, QuantizationPrecision,
+    Quantizable, RiskModel
+};
+
+// Create a model for edge deployment
+let mut model = TransformerRiskModel::new(64, 4, 128, 2)?;
+
+// Configure quantization
+let quant_config = QuantizationConfig {
+    precision: QuantizationPrecision::Int8,
+    per_channel: true,
+};
+
+// Quantize model
+model.quantize(quant_config)?;
+
+// Check memory usage
+let memory_usage = model.memory_usage();
+println!("Quantized model memory usage: {} bytes", memory_usage);
+
+// Run inference
+let risk_factors = model.generate_risk_factors(&market_data).await?;
+```
+
+### 8.5 Combined Memory Optimization
+```rust
+use deep_risk_model::prelude::{
+    TransformerRiskModel, MemoryConfig, QuantizationConfig,
+    QuantizationPrecision, Quantizable, RiskModel
+};
+
+// Create a large model
+let mut model = TransformerRiskModel::new(128, 8, 512, 4)?;
+
+// Step 1: Configure memory optimization
+let memory_config = MemoryConfig {
+    use_sparse_tensors: true,
+    sparsity_threshold: 0.1,
+    use_chunked_processing: true,
+    chunk_size: 1000,
+    use_checkpointing: true,
+    checkpoint_segments: 4,
+    ..Default::default()
+};
+model.set_memory_config(memory_config);
+
+// Step 2: Sparsify model weights
+model.sparsify(0.1)?;
+
+// Step 3: Quantize model
+let quant_config = QuantizationConfig {
+    precision: QuantizationPrecision::Int8,
+    per_channel: true,
+};
+model.quantize(quant_config)?;
+
+// Check memory usage
+let memory_usage = model.memory_usage();
+println!("Optimized model memory usage: {} bytes", memory_usage);
+
+// Process large dataset
+let risk_factors = model.generate_risk_factors(&large_market_data).await?;
+```
+
+### 8.6 Memory Pool for Iterative Processing
+```rust
+use deep_risk_model::prelude::{MemoryPool};
+use ndarray::Array2;
+
+// Create memory pool with 100MB limit
+let mut pool = MemoryPool::new(100 * 1024 * 1024);
+
+// Iterative processing with tensor reuse
+for i in 0..100 {
+    // Allocate tensors from pool
+    let input = pool.allocate(&[1000, 64])?;
+    let hidden = pool.allocate(&[1000, 128])?;
+    let output = pool.allocate(&[1000, 64])?;
+    
+    // Fill input tensor
+    fill_tensor(&mut input, i);
+    
+    // Process data
+    process_batch(&input, &mut hidden, &mut output);
+    
+    // Use output
+    let result = compute_result(&output);
+    println!("Batch {}: Result = {}", i, result);
+    
+    // Release tensors back to pool
+    pool.release(input);
+    pool.release(hidden);
+    pool.release(output);
+}
+
+// Check memory usage
+println!("Peak memory usage: {} bytes", pool.get_memory_usage());
+```
+
+### 8.7 Memory-Mapped Arrays for Out-of-Core Computation
+```rust
+use deep_risk_model::prelude::{MemoryMappedArray};
+use std::path::Path;
+
+// Create memory-mapped array
+let array = MemoryMappedArray::new(
+    Path::new("large_data.bin"),
+    vec![1_000_000, 100],
+    std::mem::size_of::<f32>()
+)?;
+
+// Process data in slices
+for i in 0..1000 {
+    let start = i * 1000;
+    let end = (i + 1) * 1000;
+    
+    // Read slice
+    let slice = array.read_slice(&[start, 0], &[end, 100])?;
+    
+    // Process slice
+    let result = process_slice(&slice);
+    
+    // Write result back
+    array.write_slice(&[start, 0], &result.view())?;
+    
+    println!("Processed slice {}/1000", i + 1);
+}
+``` 
