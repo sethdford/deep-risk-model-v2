@@ -96,20 +96,36 @@ For more detailed examples, see the [Use Cases](docs/USE_CASES.md) documentation
 
 ### BLAS Support
 
-This library uses BLAS for linear algebra operations. You can choose from several BLAS implementations:
+This library uses platform-specific BLAS implementations by default:
+
+- **macOS**: Uses Apple's Accelerate framework for optimal performance
+- **Windows**: Uses OpenBLAS via vcpkg
+- **Linux/Others**: Uses OpenBLAS
+
+You can build with the default platform-specific implementation:
 
 ```bash
-# Build with OpenBLAS (default)
-cargo build --features openblas
+# Build with the platform-specific default
+cargo build
+```
 
-# Build with Netlib
-cargo build --features netlib
+Or you can override the default by specifying a feature:
 
-# Build with Intel MKL
-cargo build --features intel-mkl
+```bash
+# Use OpenBLAS explicitly
+cargo build --no-default-features --features openblas
 
-# Build with Accelerate (macOS only)
-cargo build --features accelerate
+# Use Netlib
+cargo build --no-default-features --features netlib
+
+# Use Intel MKL
+cargo build --no-default-features --features intel-mkl
+
+# Use Accelerate (macOS only)
+cargo build --no-default-features --features accelerate
+
+# Use system BLAS (required for Windows with vcpkg)
+cargo build --no-default-features --features system
 
 # Build without BLAS (pure Rust implementation)
 cargo build --no-default-features --features no-blas
@@ -120,10 +136,14 @@ cargo build --no-default-features --features no-blas
 #### Ubuntu/Debian
 
 ```bash
-sudo apt-get install -y libopenblas-dev liblapack-dev gfortran
+sudo apt-get install -y libopenblas-dev gfortran
 ```
 
 #### macOS
+
+No additional dependencies required by default (uses built-in Accelerate framework).
+
+If you want to use OpenBLAS instead:
 
 ```bash
 brew install openblas
@@ -131,124 +151,45 @@ brew install openblas
 
 #### Windows
 
-For Windows, it's recommended to use the MSVC toolchain with vcpkg:
+For Windows, it's recommended to use vcpkg:
 
 ```bash
-vcpkg install openblas:x64-windows
+# Install vcpkg if you haven't already
+git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg
+./bootstrap-vcpkg.bat
+./vcpkg.exe integrate install
+
+# Install OpenBLAS
+./vcpkg.exe install openblas:x64-windows
 ```
 
-## 📊 Performance Metrics
+Then build with the `system` feature:
 
-| Metric | Before | After | Latest | Improvement |
-|--------|---------|--------|--------|-------------|
-| Forward Pass (32) | ~50μs | 20.8μs | 15.2μs | 69.6% faster |
-| Forward Pass (64) | ~120μs | 59.8μs | 36.3μs | 69.8% faster |
-| Multi-head Attention | ~200ms | 18.9ms | 1.54ms | 99.2% faster |
-| Covariance (64) | ~5ms | 1.40ms | 0.89ms | 82.2% faster |
-| Memory Usage (Large Model) | 100% | ~20% | ~15% | 85% reduction |
-| Thread Safety | No | Partial | Complete | 100% thread-safe |
-| Error Recovery | Basic | Improved | Comprehensive | Robust error handling |
-| No-BLAS Support | None | None | Complete | Works without BLAS |
-| Python Compatibility | None | None | Python 3.13 | Latest Python support |
-
-### Transformer Operations
-```
-Forward Pass (32 factors): 15.2μs ±0.04μs (~65,800 ops/sec)
-Forward Pass (64 factors): 36.3μs ±0.15μs (~27,500 ops/sec)
-Multi-head Attention: 1.54ms ±0.07ms (~650 ops/sec)
+```bash
+cargo build --no-default-features --features system
 ```
 
-### Risk Calculations
-```
-Covariance (64 assets): 886μs ±24μs (~1,130 ops/sec)
-```
+### No-BLAS Fallback Implementation
 
-## 🚀 Recent Improvements
-
-### Architecture Modernization
-- ✨ Implemented state-of-the-art transformer architecture
-- 🔄 Added multi-head attention with positional encoding
-- 🏗️ Created modular transformer layers with LayerNorm and FeedForward networks
-- 📊 Achieved sub-millisecond forward pass latency (20-60μs)
-
-### Memory Optimization
-- 💾 Added comprehensive memory optimization module
-- 📊 Implemented sparse tensor representation for efficient weight storage
-- 🧩 Added chunked processing for handling large datasets
-- 🔄 Implemented gradient checkpointing for memory-efficient computation
-- 💽 Added memory-mapped arrays for out-of-core computation
-- 🧠 Created memory pool for efficient tensor allocation and reuse
-
-### Model Compression
-- 🔍 Implemented quantization for model compression
-- 📉 Added support for INT8, INT16, and FP16 precision
-- 🔄 Implemented per-channel and per-tensor quantization
-- 📊 Added memory usage tracking for quantized models
-
-### Performance Optimizations
-- ⚡ Integrated OpenBLAS for hardware-accelerated matrix operations
-- 🔧 Optimized memory usage with efficient tensor operations
-- 📈 Achieved significant speedup in matrix operations
-- 💾 Reduced peak memory usage
-- 🚀 Added GPU acceleration for matrix operations and attention mechanisms
-
-### Thread Safety & Concurrency
-- 🔒 Implemented Send + Sync trait for all model components
-- 🧵 Made all models thread-safe for concurrent processing
-- 🔄 Added async/await support with Tokio runtime
-- 📊 Enabled parallel processing of multiple models
-- 🚀 Improved performance in multi-threaded environments
-
-### Error Handling
-- 🛡️ Implemented custom ModelError type for comprehensive error handling
-- 🔍 Added detailed error messages and context
-- 🧪 Improved error propagation throughout the codebase
-- 📊 Added error recovery mechanisms for robust operation
-- 🔄 Implemented fallback mechanisms for error scenarios
-
-### No-BLAS Fallback
-- 🔄 Added pure Rust implementation for environments without BLAS
-- 📊 Implemented matrix operations in pure Rust
-- 🧪 Added comprehensive test suite for no-BLAS configuration
-- 🚀 Enabled use in WebAssembly and embedded environments
-- 🔧 Simplified deployment in environments with limited dependencies
-
-### Testing & Benchmarking
-- 📊 Added comprehensive criterion.rs benchmarks
-- 🧪 Fixed dimension mismatches in transformer tests
-- 📉 Updated benchmark tests to match current interfaces
-- 🎯 Validated real-time processing capabilities
-
-## 🔄 No-BLAS Fallback Implementation
-
-The library now includes a pure Rust fallback implementation for environments where BLAS is not available:
+The library includes a pure Rust fallback implementation for environments where BLAS is not available:
 
 - ✅ Automatic fallback to pure Rust implementation when BLAS is not available
-- ✅ Conditional compilation with feature flags (`no-blas` feature)
 - ✅ Matrix multiplication and inversion implemented in pure Rust
 - ✅ Comprehensive test suite for both BLAS and no-BLAS configurations
-- ✅ CI/CD pipeline testing both configurations
 
 To use the no-BLAS implementation:
 
 ```bash
 # Build without BLAS (pure Rust implementation)
-# IMPORTANT: You MUST use --no-default-features to disable the default BLAS implementation
 cargo build --no-default-features --features no-blas
 ```
 
 > **Note for Windows Users**: The no-BLAS feature is currently not supported on Windows without vcpkg. 
-> This is due to limitations in how the `openblas-src` crate handles Windows builds. If you need to 
-> build on Windows, please use vcpkg with the OpenBLAS feature or use WSL (Windows Subsystem for Linux).
+> If you need to build on Windows, please use vcpkg with the system feature or use WSL (Windows Subsystem for Linux).
 
-> **Note for macOS Users**: The no-BLAS feature may encounter linking issues on macOS. This is because 
-> even when using the no-BLAS feature, some BLAS symbols are still being referenced during linking.
-> For macOS, we recommend using the Accelerate framework instead:
-> ```bash
-> cargo build --no-default-features --features accelerate
-> ```
-
-This allows the library to be used in environments where installing BLAS dependencies is not possible or practical, such as WebAssembly targets or certain embedded systems.
+> **Note for Performance**: The no-BLAS implementation is significantly slower for large matrices.
+> It's recommended to use a BLAS implementation for production use.
 
 ## 🛠️ Technical Stack
 

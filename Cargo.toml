@@ -79,9 +79,10 @@ sysinfo = "0.29"
 # curand-sys = { version = "0.1.0", optional = true }
 
 [features]
-default = ["openblas"]
+# Default features - platform-specific implementation will be selected in build.rs
+default = []
 
-# Main feature flags - choose one BLAS implementation
+# Platform-specific BLAS implementations
 openblas = ["ndarray/blas", "ndarray-linalg", "dep:openblas-src", "blas-enabled"]
 netlib = ["ndarray/blas", "ndarray-linalg", "dep:netlib-src", "blas-enabled"]
 intel-mkl = ["ndarray/blas", "ndarray-linalg", "dep:intel-mkl-src", "blas-enabled"]
@@ -94,8 +95,6 @@ system = ["ndarray/blas", "ndarray-linalg", "openblas-src/system", "blas-enabled
 blas-enabled = []
 
 # No BLAS support - pure Rust implementation
-# IMPORTANT: When using this feature, you MUST also disable default features:
-# cargo build --no-default-features --features no-blas
 no-blas = []
 
 # GPU feature - placeholder for future GPU support

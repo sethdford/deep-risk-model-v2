@@ -16,22 +16,23 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        blas: [with-blas, without-blas]
+        blas: [default, no-blas]
         include:
-          - blas: with-blas
-            features: "openblas"
-          - blas: without-blas
-            features: "no-blas"
-        exclude:
-          # Exclude Windows with OpenBLAS for now as it can be problematic
-          - os: windows-latest
-            blas: with-blas
-          # Exclude Windows with no-blas as it's not supported without vcpkg
-          - os: windows-latest
-            blas: without-blas
-          # Exclude macOS with no-blas as it has linking issues
+          - os: ubuntu-latest
+            blas: default
+            features: ""
           - os: macos-latest
-            blas: without-blas
+            blas: default
+            features: ""
+          - os: windows-latest
+            blas: default
+            features: ""
+          - blas: no-blas
+            features: "--no-default-features --features no-blas"
+        exclude:
+          # Exclude Windows with no-blas as it's not supported
+          - os: windows-latest
+            blas: no-blas
 
     steps:
     - uses: actions/checkout@v4
@@ -46,69 +47,35 @@ jobs:
     
     # Install system dependencies for OpenBLAS on Ubuntu
     - name: Install OpenBLAS dependencies (Ubuntu)
-      if: matrix.blas == 'with-blas' && matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest' && matrix.blas == 'default'
       run: |
         sudo apt-get update
-        sudo apt-get install -y gfortran
+        sudo apt-get install -y libopenblas-dev gfortran
     
-    # Install OpenBLAS on macOS
-    - name: Install OpenBLAS (macOS)
-      if: matrix.blas == 'with-blas' && matrix.os == 'macos-latest'
+    # Install vcpkg and OpenBLAS on Windows
+    - name: Install OpenBLAS via vcpkg (Windows)
+      if: matrix.os == 'windows-latest' && matrix.blas == 'default'
       run: |
-        brew install openblas gfortran
-        echo "LIBRARY_PATH=$LIBRARY_PATH:/opt/homebrew/opt/openblas/lib:/opt/homebrew/lib" >> $GITHUB_ENV
-        echo "CPATH=$CPATH:/opt/homebrew/opt/openblas/include" >> $GITHUB_ENV
-        echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/homebrew/opt/openblas/lib/pkgconfig" >> $GITHUB_ENV
-        echo "OPENBLAS_HOME=/opt/homebrew/opt/openblas" >> $GITHUB_ENV
-        echo "LDFLAGS=-L/opt/homebrew/opt/openblas/lib -L/opt/homebrew/lib" >> $GITHUB_ENV
-        echo "CPPFLAGS=-I/opt/homebrew/opt/openblas/include" >> $GITHUB_ENV
-        # List OpenBLAS libraries for debugging
-        ls -la /opt/homebrew/opt/openblas/lib || true
-        # Check if gfortran is installed and available
-        which gfortran || echo "gfortran not found"
-        # Try to find libgfortran
-        find /opt/homebrew -name "libgfortran*" || echo "libgfortran not found in /opt/homebrew"
-        find /usr/local -name "libgfortran*" || echo "libgfortran not found in /usr/local"
+        git clone https://github.com/microsoft/vcpkg.git
+        cd vcpkg
+        ./bootstrap-vcpkg.bat
+        ./vcpkg.exe install openblas:x64-windows
+        ./vcpkg.exe integrate install
+        echo "VCPKG_ROOT=${{ github.workspace }}/vcpkg" >> $GITHUB_ENV
     
     # Build with the specified features
     - name: Build
-      id: build
-      continue-on-error: true
-      run: cargo build --verbose --no-default-features --features ${{ matrix.features }}
+      run: cargo build --verbose ${{ matrix.features }}
     
-    # Fallback to Accelerate on macOS if OpenBLAS build fails
-    - name: Fallback to Accelerate (macOS)
-      if: steps.build.outcome == 'failure' && matrix.blas == 'with-blas' && matrix.os == 'macos-latest'
-      run: |
-        echo "Falling back to Apple's Accelerate framework"
-        cargo build --verbose --no-default-features --features accelerate
-    
-    # Build examples with the specified features - macOS with Accelerate fallback
-    - name: Build examples with Accelerate (macOS fallback)
-      if: matrix.os == 'macos-latest' && matrix.blas == 'with-blas' && steps.build.outcome == 'failure'
-      run: cargo build --verbose --no-default-features --features accelerate --examples
-    
-    # Build examples with the specified features - standard path
+    # Build examples with the specified features
     - name: Build examples
-      if: ${{ !(matrix.os == 'macos-latest' && matrix.blas == 'with-blas' && steps.build.outcome == 'failure') }}
-      run: cargo build --verbose --no-default-features --features ${{ matrix.features }} --examples
+      run: cargo build --verbose ${{ matrix.features }} --examples
     
-    # Run tests with the specified features - macOS with Accelerate fallback
-    - name: Run tests with Accelerate (macOS fallback)
-      if: matrix.os == 'macos-latest' && matrix.blas == 'with-blas' && steps.build.outcome == 'failure'
-      run: cargo test --verbose --no-default-features --features accelerate
-    
-    # Run tests with the specified features - standard path
+    # Run tests with the specified features
     - name: Run tests
-      if: ${{ !(matrix.os == 'macos-latest' && matrix.blas == 'with-blas' && steps.build.outcome == 'failure') }}
-      run: cargo test --verbose --no-default-features --features ${{ matrix.features }}
+      run: cargo test --verbose ${{ matrix.features }}
     
-    # Cross-feature test with Accelerate (macOS fallback)
-    - name: Cross-feature test with Accelerate (macOS fallback)
-      if: matrix.blas == 'with-blas' && matrix.os == 'macos-latest' && steps.build.outcome == 'failure'
-      run: cargo test --verbose --no-default-features --features accelerate -- --test-threads=1 fallback
-    
-    # Cross-feature test - standard path
-    - name: Cross-feature test (with BLAS)
-      if: ${{ matrix.blas == 'with-blas' && !(matrix.os == 'macos-latest' && steps.build.outcome == 'failure') }}
-      run: cargo test --verbose --no-default-features --features ${{ matrix.features }} -- --test-threads=1 fallback
+    # Run the no-blas example specifically for no-blas configurations
+    - name: Run no-blas example
+      if: matrix.blas == 'no-blas'
+      run: cargo run --example no_blas_example ${{ matrix.features }}
