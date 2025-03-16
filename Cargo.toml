@@ -109,6 +109,8 @@ path = "."
 default-features = false
 features = ["no-blas"]
 
+# Don't include any BLAS-specific dependencies in dev-dependencies
+# to avoid conflicts with the no-blas feature
 [dev-dependencies]
 # Async testing
 tokio-test = "0.4"
@@ -129,9 +131,9 @@ mockito = "1.2"
 # Mocking
 mockall = "0.11"
 
-# BLAS dependencies for tests
-[target.'cfg(not(target_os = "macos"))'.dev-dependencies]
-openblas-src = { version = "0.10", features = ["cblas"] }
+# BLAS dependencies for tests - commented out to avoid conflicts with no-blas
+# [target.'cfg(not(target_os = "macos"))'.dev-dependencies]
+# openblas-src = { version = "0.10", features = ["cblas"] }
 
 [[bin]]
 name = "bootstrap"

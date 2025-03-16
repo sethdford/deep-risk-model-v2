@@ -564,7 +564,7 @@ mod tests {
         assert_eq!(pool.get_memory_usage(), expected_usage);
         
         // Allocate again - should reuse
-        let t3 = pool.allocate(&[10, 10]).unwrap();
+        let _t3 = pool.allocate(&[10, 10]).unwrap();
         
         // Memory usage should not increase
         assert_eq!(pool.get_memory_usage(), expected_usage);

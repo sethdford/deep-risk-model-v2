@@ -11,6 +11,10 @@ fn main() {
     
     let any_blas_feature_enabled = openblas_enabled || accelerate_enabled || intel_mkl_enabled;
     
+    // Check if we're running tests
+    let is_test = std::env::var("CARGO_FEATURE_TEST").is_ok() || 
+                 std::env::var("CARGO_CFG_TEST").is_ok();
+    
     // Handle no-blas feature first - this takes precedence over other features
     if no_blas_enabled {
         println!("cargo:rustc-cfg=feature=\"no-blas\"");
@@ -127,10 +131,6 @@ fn main() {
             }
         }
     }
-    
-    // Check if we're running tests
-    let is_test = std::env::var("CARGO_FEATURE_TEST").is_ok() || 
-                 std::env::var("CARGO_CFG_TEST").is_ok();
     
     if is_test {
         println!("cargo:warning=Running in test mode");
