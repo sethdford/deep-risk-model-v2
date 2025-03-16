@@ -2,21 +2,97 @@
 
 A significant improvement over https://github.com/sethdford/deep_risk_model-v0 which is a Rust implementation of a deep learning-based risk model for financial markets, inspired by the research paper ["Deep Risk Model: A Deep Learning Solution for Mining Latent Risk Factors to Improve Covariance Matrix Estimation"](https://arxiv.org/abs/2107.05201) (Lin et al., 2021). This project combines Graph Attention Networks (GAT) and Gated Recurrent Units (GRU) to generate risk factors and estimate covariance matrices from market data.
 
+## 🔑 Key Features
 
-## Features and Improvements over V0
+- **Advanced Risk Modeling**: Transformer architecture, Temporal Fusion Transformer (TFT), Factor Analysis
+- **Market Intelligence**: Regime Detection with HMM, Adaptive Risk Estimation
+- **Performance Optimizations**: GPU acceleration, Quantization, Memory optimization
+- **Production Ready**: Thread-safe, Error handling, No-BLAS fallback, Python bindings
+- **Comprehensive Testing**: Backtesting framework, Benchmarks, CI/CD integration
 
-- Deep Risk Model with transformer architecture
-- Temporal Fusion Transformer (TFT) for time series analysis
-- Factor Analysis for risk decomposition
-- Graph Attention Networks (GAT) for asset relationships
-- Gated Recurrent Units (GRU) for temporal dependencies
-- Market Regime Detection using Hidden Markov Models
-- Regime-Aware Risk Models for adaptive risk estimation
-- Backtesting framework for model evaluation
-- GPU acceleration for high-performance risk modeling
-- Quantization for model compression and inference acceleration
+## 📚 Documentation & API
 
-## Building
+Comprehensive documentation is available to help you get started:
+
+- [Architecture](docs/ARCHITECTURE.md) - System architecture and capabilities
+- [Theory](docs/THEORY.md) - Theoretical foundations
+- [Use Cases](docs/USE_CASES.md) - Application scenarios
+- [Benchmarks](docs/BENCHMARKS.md) - Detailed performance metrics
+- [Sprint Backlog](docs/SPRINT_BACKLOG.md) - Development progress
+
+**API Documentation**: Run `cargo doc --open` for detailed API reference
+
+## 🚀 Quick Start
+
+### Installation
+
+Add this to your `Cargo.toml`:
+```toml
+[dependencies]
+deep_risk_model = "0.1.0"
+```
+
+### Basic Usage
+
+```rust
+use deep_risk_model::prelude::{DeepRiskModel, MarketData, RiskModel};
+use ndarray::Array2;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create sample data
+    let n_assets = 64;
+    let n_samples = 100;
+    let features = Array2::zeros((n_samples, n_assets));
+    let returns = Array2::zeros((n_samples, n_assets));
+    let data = MarketData::new(returns, features);
+    
+    // Create and train model
+    let mut model = DeepRiskModel::new(n_assets, 5)?;
+    model.train(&data).await?;
+    
+    // Generate risk factors
+    let risk_factors = model.generate_risk_factors(&data).await?;
+    
+    // Estimate covariance matrix
+    let covariance = model.estimate_covariance(&data).await?;
+    
+    Ok(())
+}
+```
+
+### Advanced Features
+
+```rust
+use deep_risk_model::prelude::{
+    TransformerRiskModel, MarketData, RiskModel,
+    MemoryConfig, QuantizationConfig, QuantizationPrecision
+};
+
+// Create model with memory optimization
+let mut model = TransformerRiskModel::new(64, 8, 256, 3)?;
+
+// Configure memory optimization
+let memory_config = MemoryConfig {
+    use_sparse_tensors: true,
+    sparsity_threshold: 0.7,
+    use_chunked_processing: true,
+    chunk_size: 1000,
+    ..Default::default()
+};
+model.set_memory_config(memory_config);
+
+// Quantize model for memory reduction
+let quant_config = QuantizationConfig {
+    precision: QuantizationPrecision::Int8,
+    per_channel: true,
+};
+model.quantize(quant_config)?;
+```
+
+For more detailed examples, see the [Use Cases](docs/USE_CASES.md) documentation.
+
+## 🛠️ Building & Installation
 
 ### BLAS Support
 
@@ -38,8 +114,6 @@ cargo build --features accelerate
 # Build without BLAS (pure Rust implementation)
 cargo build --no-default-features --features no-blas
 ```
-
-Note: The pure Rust implementation has limited functionality and will fail for matrix operations on large matrices.
 
 ### System Dependencies
 
@@ -63,38 +137,31 @@ For Windows, it's recommended to use the MSVC toolchain with vcpkg:
 vcpkg install openblas:x64-windows
 ```
 
-## Testing
+## 📊 Performance Metrics
 
-Run all tests with:
+| Metric | Before | After | Latest | Improvement |
+|--------|---------|--------|--------|-------------|
+| Forward Pass (32) | ~50μs | 20.8μs | 15.2μs | 69.6% faster |
+| Forward Pass (64) | ~120μs | 59.8μs | 36.3μs | 69.8% faster |
+| Multi-head Attention | ~200ms | 18.9ms | 1.54ms | 99.2% faster |
+| Covariance (64) | ~5ms | 1.40ms | 0.89ms | 82.2% faster |
+| Memory Usage (Large Model) | 100% | ~20% | ~15% | 85% reduction |
+| Thread Safety | No | Partial | Complete | 100% thread-safe |
+| Error Recovery | Basic | Improved | Comprehensive | Robust error handling |
+| No-BLAS Support | None | None | Complete | Works without BLAS |
+| Python Compatibility | None | None | Python 3.13 | Latest Python support |
 
-```bash
-cargo test --features openblas
+### Transformer Operations
+```
+Forward Pass (32 factors): 15.2μs ±0.04μs (~65,800 ops/sec)
+Forward Pass (64 factors): 36.3μs ±0.15μs (~27,500 ops/sec)
+Multi-head Attention: 1.54ms ±0.07ms (~650 ops/sec)
 ```
 
-For tests that don't require BLAS:
-
-```bash
-cargo test --no-default-features --features no-blas -- --skip factor_analysis::tests::test_factor_selection --skip gpu_model::tests::test_gpu_factor_metrics --skip model::tests::test_factor_generation --skip model::tests::test_factor_metrics --skip model::tests::test_covariance_estimation --skip gpu_model::tests::test_gpu_factor_generation --skip gpu_model::tests::test_gpu_vs_cpu_performance
+### Risk Calculations
 ```
-
-Or use the provided script:
-
-```bash
-./run_tests.sh
+Covariance (64 assets): 886μs ±24μs (~1,130 ops/sec)
 ```
-
-## Examples
-
-Run examples with:
-
-```bash
-cargo run --example quantization_example --features openblas
-cargo run --example memory_optimization_example --features openblas
-```
-
-## License
-
-MIT
 
 ## 🚀 Recent Improvements
 
@@ -152,27 +219,24 @@ MIT
 - 📉 Updated benchmark tests to match current interfaces
 - 🎯 Validated real-time processing capabilities
 
-## 🎯 Performance Metrics
+## 🔄 No-BLAS Fallback Implementation
 
-### Transformer Operations
-```
-Forward Pass (32 factors): 15.2μs ±0.04μs (~65,800 ops/sec)
-Forward Pass (64 factors): 36.3μs ±0.15μs (~27,500 ops/sec)
-Multi-head Attention: 1.54ms ±0.07ms (~650 ops/sec)
+The library now includes a pure Rust fallback implementation for environments where BLAS is not available:
+
+- ✅ Automatic fallback to pure Rust implementation when BLAS is not available
+- ✅ Conditional compilation with feature flags (`no-blas` feature)
+- ✅ Matrix multiplication and inversion implemented in pure Rust
+- ✅ Comprehensive test suite for both BLAS and no-BLAS configurations
+- ✅ CI/CD pipeline testing both configurations
+
+To use the no-BLAS implementation:
+
+```bash
+# Build without BLAS (pure Rust implementation)
+cargo build --no-default-features --features no-blas
 ```
 
-### Risk Calculations
-```
-Covariance (64 assets): 886μs ±24μs (~1,130 ops/sec)
-```
-
-### Memory Optimization
-```
-Sparse Tensor: Up to 80% memory reduction for sparse weights
-Chunked Processing: Process datasets larger than available memory
-Gradient Checkpointing: Reduce memory usage by 70-90% during computation
-Memory Pool: Efficient tensor reuse with minimal allocation overhead
-```
+This allows the library to be used in environments where installing BLAS dependencies is not possible or practical, such as WebAssembly targets or certain embedded systems.
 
 ## 🛠️ Technical Stack
 
@@ -239,113 +303,46 @@ deep_risk_model/
     └── integration_tests.rs
 ```
 
-## 🚀 Getting Started
+## 🔍 System Requirements
+- CPU: Modern processor with SIMD support
+- RAM: 8GB minimum (16GB recommended)
+- OS: Linux, macOS, or Windows with OpenBLAS
+- Rust: 2021 edition or later
 
-### Prerequisites
-- Rust 2021 edition or later
-- OpenBLAS system installation
-- CUDA Toolkit 11.0+ (for GPU acceleration)
-- Cargo and build essentials
+## Testing
 
-### Installation
-```bash
-# Clone the repository
-git clone <repository-url>
-
-# Build the project (CPU only)
-cd deep_risk_model
-cargo build --release
-
-# Build with GPU support
-cargo build --release --features gpu
-
-# Run tests
-cargo test
-
-# Run benchmarks
-cargo bench
-```
-
-## 📊 Benchmark Reports
-Detailed benchmark reports are available in HTML format:
-```bash
-# Generate and view benchmark reports
-cargo bench
-open target/criterion/report/index.html
-```
-
-## Memory Optimization Examples
-```bash
-# Run memory optimization example
-cargo run --example memory_optimization_example
-
-# Run quantization example
-cargo run --example quantization_example
-```
-
-## 🔜 Upcoming Features
-1. ✅ Market regime detection with HMM
-2. ✅ Comprehensive stress testing framework
-3. ✅ GPU acceleration for matrix operations
-4. ✅ Quantization for model compression
-5. ✅ Memory optimization for large models
-6. ✅ Python bindings via PyO3
-7. ✅ No-BLAS fallback implementation for environments without BLAS
-8. ✅ Send + Sync trait implementations for thread safety
-9. ✅ Improved error handling with custom ModelError type
-10. ✅ Comprehensive documentation and examples
-
-## 🔄 No-BLAS Fallback Implementation
-
-The library now includes a pure Rust fallback implementation for environments where BLAS is not available:
-
-- ✅ Automatic fallback to pure Rust implementation when BLAS is not available
-- ✅ Conditional compilation with feature flags (`no-blas` feature)
-- ✅ Matrix multiplication and inversion implemented in pure Rust
-- ✅ Comprehensive test suite for both BLAS and no-BLAS configurations
-- ✅ CI/CD pipeline testing both configurations
-
-To use the no-BLAS implementation:
+Run all tests with:
 
 ```bash
-# Build without BLAS (pure Rust implementation)
-cargo build --no-default-features --features no-blas
+cargo test --features openblas
 ```
 
-This allows the library to be used in environments where installing BLAS dependencies is not possible or practical, such as WebAssembly targets or certain embedded systems.
+For tests that don't require BLAS:
 
-## 📚 Documentation
-- [Architecture](docs/ARCHITECTURE.md) - System architecture and capabilities
-- [Benchmarks](docs/BENCHMARKS.md) - Detailed performance metrics
-- [Sprint Backlog](docs/SPRINT_BACKLOG.md) - Development progress
-- [Theory](docs/THEORY.md) - Theoretical foundations
-- [Use Cases](docs/USE_CASES.md) - Application scenarios
-- API Documentation: `cargo doc --open`
+```bash
+cargo test --no-default-features --features no-blas -- --skip factor_analysis::tests::test_factor_selection --skip gpu_model::tests::test_gpu_factor_metrics --skip model::tests::test_factor_generation --skip model::tests::test_factor_metrics --skip model::tests::test_covariance_estimation --skip gpu_model::tests::test_gpu_factor_generation --skip gpu_model::tests::test_gpu_vs_cpu_performance
+```
+
+Or use the provided script:
+
+```bash
+./run_tests.sh
+```
+
+## Examples
+
+Run examples with:
+
+```bash
+cargo run --example quantization_example --features openblas
+cargo run --example memory_optimization_example --features openblas
+```
 
 ## 🤝 Contributing
 Contributions are welcome! Please check our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
 ## 📄 License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 📊 Performance Comparison
-| Metric | Before | After | Latest | Improvement |
-|--------|---------|--------|--------|-------------|
-| Forward Pass (32) | ~50μs | 20.8μs | 15.2μs | 69.6% faster |
-| Forward Pass (64) | ~120μs | 59.8μs | 36.3μs | 69.8% faster |
-| Multi-head Attention | ~200ms | 18.9ms | 1.54ms | 99.2% faster |
-| Covariance (64) | ~5ms | 1.40ms | 0.89ms | 82.2% faster |
-| Memory Usage (Large Model) | 100% | ~20% | ~15% | 85% reduction |
-| Thread Safety | No | Partial | Complete | 100% thread-safe |
-| Error Recovery | Basic | Improved | Comprehensive | Robust error handling |
-| No-BLAS Support | None | None | Complete | Works without BLAS |
-| Python Compatibility | None | None | Python 3.13 | Latest Python support |
-
-## 🔍 System Requirements
-- CPU: Modern processor with SIMD support
-- RAM: 8GB minimum (16GB recommended)
-- OS: Linux, macOS, or Windows with OpenBLAS
-- Rust: 2021 edition or later
 
 ## Research Background
 
