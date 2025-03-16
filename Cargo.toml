@@ -26,16 +26,18 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 
 # Data processing
-ndarray = { version = "0.15", features = ["blas", "serde"] }
+ndarray = { version = "0.15", features = ["serde"] }
 ndarray-rand = "0.14"
-ndarray-linalg = { version = "0.16", features = ["openblas-system"] }
-blas-src = { version = "0.8", features = ["openblas"] }
-openblas-src = { version = "0.10", features = ["system"] }
 ndarray-stats = "0.5"
 rand = "0.8"
 rand_distr = "0.4"
 rand_chacha = "0.3"
 num-traits = "0.2"
+
+# BLAS and OpenBLAS dependencies - now optional
+ndarray-linalg = { version = "0.16", optional = true }
+blas-src = { version = "0.8", optional = true }
+openblas-src = { version = "0.10", optional = true }
 
 # Async traits
 async-trait = "0.1"
@@ -73,12 +75,16 @@ sysinfo = "0.29"
 # curand-sys = { version = "0.1.0", optional = true }
 
 [features]
-default = []
+default = ["ndarray/blas", "ndarray-linalg", "blas-src", "openblas-src"]
 # The 'gpu' feature is currently a placeholder for future GPU support
 # When enabled, the code will use GPU-specific implementations where available
 # but will fall back to CPU implementations if actual CUDA support is not implemented
 gpu = []  # Will include CUDA dependencies when they are properly implemented
-openblas-system = ["ndarray-linalg/openblas-system"]
+openblas-system = ["ndarray-linalg/openblas-system", "openblas-src/system"]
+netlib = ["ndarray-linalg/netlib"]
+intel-mkl = ["ndarray-linalg/intel-mkl"]
+accelerate = ["ndarray-linalg/accelerate"]
+no-blas = []
 
 [dev-dependencies]
 # Async testing
@@ -140,4 +146,4 @@ name = "memory_optimization_example"
 path = "examples/memory_optimization_example.rs"
 
 [build-dependencies]
-cblas-sys = "0.1.4"
+cblas-sys = { version = "0.1.4", optional = true }

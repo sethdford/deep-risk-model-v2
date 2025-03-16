@@ -11,12 +11,29 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        blas: [with-openblas, without-blas]
+        include:
+          - blas: with-openblas
+            features: "openblas-system"
+            install_deps: true
+          - blas: without-blas
+            features: "no-blas"
+            install_deps: false
 
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Install OpenBLAS dependencies
+      if: matrix.install_deps
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libopenblas-dev
+    
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --verbose --no-default-features --features ${{ matrix.features }}
+    
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose --no-default-features --features ${{ matrix.features }}

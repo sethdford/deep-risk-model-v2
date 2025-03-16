@@ -164,3 +164,182 @@ mod tests {
         Ok(())
     }
 }
+
+#[cfg(not(feature = "no-blas"))]
+pub use ndarray_linalg;
+
+#[cfg(feature = "no-blas")]
+pub mod fallback {
+    //! Fallback implementations for when BLAS is not available
+    use ndarray::{Array2, ArrayBase, Data, Ix2};
+    use crate::error::ModelError;
+
+    /// A simple matrix multiplication fallback when BLAS is not available
+    pub fn matmul<S1, S2>(a: &ArrayBase<S1, Ix2>, b: &ArrayBase<S2, Ix2>) -> Result<Array2<f32>, ModelError>
+    where
+        S1: Data<Elem = f32>,
+        S2: Data<Elem = f32>,
+    {
+        let (a_rows, a_cols) = a.dim();
+        let (b_rows, b_cols) = b.dim();
+
+        if a_cols != b_rows {
+            return Err(ModelError::InvalidDimension(format!(
+                "Matrix dimensions don't match for multiplication: ({}, {}) and ({}, {})",
+                a_rows, a_cols, b_rows, b_cols
+            )));
+        }
+
+        let mut result = Array2::zeros((a_rows, b_cols));
+
+        for i in 0..a_rows {
+            for j in 0..b_cols {
+                let mut sum = 0.0;
+                for k in 0..a_cols {
+                    sum += a[[i, k]] * b[[k, j]];
+                }
+                result[[i, j]] = sum;
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// A simple matrix inversion fallback when BLAS is not available
+    /// This is a very basic implementation and should only be used when BLAS is not available
+    pub fn inv(a: &Array2<f32>) -> Result<Array2<f32>, ModelError> {
+        let (rows, cols) = a.dim();
+        if rows != cols {
+            return Err(ModelError::InvalidDimension(format!(
+                "Matrix must be square for inversion, got: ({}, {})",
+                rows, cols
+            )));
+        }
+
+        // For simplicity, we'll only implement 2x2 and 3x3 matrix inversion
+        // For larger matrices, we'll return an error suggesting to use BLAS
+        match rows {
+            2 => {
+                let det = a[[0, 0]] * a[[1, 1]] - a[[0, 1]] * a[[1, 0]];
+                if det.abs() < 1e-10 {
+                    return Err(ModelError::NumericalError("Matrix is singular".to_string()));
+                }
+                let inv_det = 1.0 / det;
+                let mut result = Array2::zeros((2, 2));
+                result[[0, 0]] = a[[1, 1]] * inv_det;
+                result[[0, 1]] = -a[[0, 1]] * inv_det;
+                result[[1, 0]] = -a[[1, 0]] * inv_det;
+                result[[1, 1]] = a[[0, 0]] * inv_det;
+                Ok(result)
+            }
+            3 => {
+                // 3x3 matrix inversion using cofactors
+                let mut result = Array2::zeros((3, 3));
+                let det = a[[0, 0]] * (a[[1, 1]] * a[[2, 2]] - a[[1, 2]] * a[[2, 1]])
+                        - a[[0, 1]] * (a[[1, 0]] * a[[2, 2]] - a[[1, 2]] * a[[2, 0]])
+                        + a[[0, 2]] * (a[[1, 0]] * a[[2, 1]] - a[[1, 1]] * a[[2, 0]]);
+                
+                if det.abs() < 1e-10 {
+                    return Err(ModelError::NumericalError("Matrix is singular".to_string()));
+                }
+                
+                let inv_det = 1.0 / det;
+                
+                // Calculate cofactors
+                result[[0, 0]] = (a[[1, 1]] * a[[2, 2]] - a[[1, 2]] * a[[2, 1]]) * inv_det;
+                result[[0, 1]] = (a[[0, 2]] * a[[2, 1]] - a[[0, 1]] * a[[2, 2]]) * inv_det;
+                result[[0, 2]] = (a[[0, 1]] * a[[1, 2]] - a[[0, 2]] * a[[1, 1]]) * inv_det;
+                result[[1, 0]] = (a[[1, 2]] * a[[2, 0]] - a[[1, 0]] * a[[2, 2]]) * inv_det;
+                result[[1, 1]] = (a[[0, 0]] * a[[2, 2]] - a[[0, 2]] * a[[2, 0]]) * inv_det;
+                result[[1, 2]] = (a[[0, 2]] * a[[1, 0]] - a[[0, 0]] * a[[1, 2]]) * inv_det;
+                result[[2, 0]] = (a[[1, 0]] * a[[2, 1]] - a[[1, 1]] * a[[2, 0]]) * inv_det;
+                result[[2, 1]] = (a[[0, 1]] * a[[2, 0]] - a[[0, 0]] * a[[2, 1]]) * inv_det;
+                result[[2, 2]] = (a[[0, 0]] * a[[1, 1]] - a[[0, 1]] * a[[1, 0]]) * inv_det;
+                
+                Ok(result)
+            }
+            _ => Err(ModelError::UnsupportedOperation(
+                "Matrix inversion for matrices larger than 3x3 requires BLAS. Please enable the BLAS feature.".to_string()
+            )),
+        }
+    }
+
+    /// A simple eigenvalue decomposition fallback when BLAS is not available
+    /// This is a very basic implementation and should only be used when BLAS is not available
+    pub fn eigh(a: &Array2<f32>) -> Result<(Array2<f32>, Array2<f32>), ModelError> {
+        let (rows, cols) = a.dim();
+        if rows != cols {
+            return Err(ModelError::InvalidDimension(format!(
+                "Matrix must be square for eigendecomposition, got: ({}, {})",
+                rows, cols
+            )));
+        }
+
+        // For simplicity, we'll only implement 2x2 matrix eigendecomposition
+        // For larger matrices, we'll return an error suggesting to use BLAS
+        match rows {
+            2 => {
+                let a11 = a[[0, 0]];
+                let a12 = a[[0, 1]];
+                let a21 = a[[1, 0]];
+                let a22 = a[[1, 1]];
+                
+                // Check if the matrix is symmetric (within numerical precision)
+                if (a12 - a21).abs() > 1e-10 {
+                    return Err(ModelError::InvalidInput("Matrix must be symmetric for eigendecomposition".to_string()));
+                }
+                
+                // Calculate eigenvalues
+                let trace = a11 + a22;
+                let det = a11 * a22 - a12 * a21;
+                
+                let discriminant = trace * trace - 4.0 * det;
+                if discriminant < 0.0 {
+                    return Err(ModelError::NumericalError("Complex eigenvalues not supported in fallback mode".to_string()));
+                }
+                
+                let sqrt_discriminant = discriminant.sqrt();
+                let lambda1 = (trace + sqrt_discriminant) / 2.0;
+                let lambda2 = (trace - sqrt_discriminant) / 2.0;
+                
+                // Calculate eigenvectors
+                let mut eigenvectors = Array2::zeros((2, 2));
+                
+                // First eigenvector
+                if a12.abs() > 1e-10 {
+                    let v1 = [a12, lambda1 - a11];
+                    let norm = (v1[0] * v1[0] + v1[1] * v1[1]).sqrt();
+                    eigenvectors[[0, 0]] = v1[0] / norm;
+                    eigenvectors[[1, 0]] = v1[1] / norm;
+                } else if (a11 - lambda1).abs() > 1e-10 {
+                    eigenvectors[[0, 0]] = 0.0;
+                    eigenvectors[[1, 0]] = 1.0;
+                } else {
+                    eigenvectors[[0, 0]] = 1.0;
+                    eigenvectors[[1, 0]] = 0.0;
+                }
+                
+                // Second eigenvector
+                if a12.abs() > 1e-10 {
+                    let v2 = [a12, lambda2 - a11];
+                    let norm = (v2[0] * v2[0] + v2[1] * v2[1]).sqrt();
+                    eigenvectors[[0, 1]] = v2[0] / norm;
+                    eigenvectors[[1, 1]] = v2[1] / norm;
+                } else if (a11 - lambda2).abs() > 1e-10 {
+                    eigenvectors[[0, 1]] = 0.0;
+                    eigenvectors[[1, 1]] = 1.0;
+                } else {
+                    eigenvectors[[0, 1]] = 1.0;
+                    eigenvectors[[1, 1]] = 0.0;
+                }
+                
+                let eigenvalues = Array2::from_diag(&ndarray::Array1::from(vec![lambda1, lambda2]));
+                
+                Ok((eigenvalues, eigenvectors))
+            }
+            _ => Err(ModelError::UnsupportedOperation(
+                "Eigendecomposition for matrices larger than 2x2 requires BLAS. Please enable the BLAS feature.".to_string()
+            )),
+        }
+    }
+}

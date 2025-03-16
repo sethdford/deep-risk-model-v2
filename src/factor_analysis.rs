@@ -1,6 +1,10 @@
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, s, Axis};
+#[cfg(not(feature = "no-blas"))]
 use ndarray_linalg::Solve;
 use crate::error::ModelError;
+
+#[cfg(feature = "no-blas")]
+use crate::fallback;
 
 /// Factor quality metrics for evaluating generated risk factors.
 /// 
@@ -94,7 +98,19 @@ impl FactorAnalyzer {
             // Subtract projections onto previous factors
             for j in 0..i {
                 let prev_factor = factors.slice(s![.., j]);
+                
+                // Calculate projection coefficient (dot product)
+                #[cfg(not(feature = "no-blas"))]
                 let proj = factor.dot(&prev_factor) / prev_factor.dot(&prev_factor);
+                
+                #[cfg(feature = "no-blas")]
+                let proj = {
+                    let dot1 = factor.iter().zip(prev_factor.iter()).map(|(&a, &b)| a * b).sum::<f32>();
+                    let dot2 = prev_factor.iter().map(|&x| x * x).sum::<f32>();
+                    if dot2 < 1e-10 { 0.0 } else { dot1 / dot2 }
+                };
+                
+                // Subtract projection
                 factor = &factor - &(&prev_factor * proj);
             }
             
@@ -248,12 +264,18 @@ impl FactorAnalyzer {
             }
         }
         
-        // Calculate R² of factor regressed on other factors
-        let target = factors.slice(s![.., factor_idx]);
-        let r_squared = self.calculate_r_squared(&target, &other_factors)?;
+        // Calculate R-squared of factor_idx with all other factors
+        let r_squared = self.calculate_r_squared(
+            &factors.slice(s![.., factor_idx]),
+            &other_factors,
+        )?;
         
         // VIF = 1 / (1 - R²)
-        Ok(1.0 / (1.0 - r_squared))
+        if r_squared >= 1.0 {
+            Ok(f32::MAX)
+        } else {
+            Ok(1.0 / (1.0 - r_squared))
+        }
     }
 
     /// Calculate t-statistic for factor significance
@@ -263,78 +285,96 @@ impl FactorAnalyzer {
         returns: &Array2<f32>,
     ) -> Result<f32, ModelError> {
         let n_samples = factor.len();
-        let mean = factor.mean().unwrap_or(0.0);
-        let std = factor.std(0.0);
+        let n_assets = returns.shape()[1];
         
-        if std < 1e-10 {
-            return Ok(0.0);
+        // Calculate mean t-statistic across all assets
+        let mut t_stat_sum = 0.0;
+        for j in 0..n_assets {
+            let asset_returns = returns.slice(s![.., j]);
+            let corr = self.correlation(factor, &asset_returns)?;
+            let t = corr * ((n_samples - 2) as f32).sqrt() / (1.0 - corr * corr).sqrt();
+            t_stat_sum += t;
         }
         
-        Ok(mean / (std / (n_samples as f32).sqrt()))
+        Ok(t_stat_sum / n_assets as f32)
     }
 
-    /// Calculate explained variance ratio
+    /// Calculate explained variance ratio for a factor
     fn calculate_explained_variance(
         &self,
         factor: &ArrayView1<f32>,
         returns: &Array2<f32>,
     ) -> Result<f32, ModelError> {
-        let total_var = returns.var_axis(Axis(0), 0.0).sum();
-        let factor_var = factor.var(0.0);
+        let n_assets = returns.shape()[1];
+        let mut exp_var_sum = 0.0;
         
-        if total_var < 1e-10 {
-            return Ok(0.0);
+        for j in 0..n_assets {
+            let asset_returns = returns.slice(s![.., j]);
+            let corr = self.correlation(factor, &asset_returns)?;
+            exp_var_sum += corr * corr;  // R² is explained variance
         }
         
-        Ok(factor_var / total_var)
+        Ok(exp_var_sum / n_assets as f32)
     }
 
-    /// Calculate R-squared for multiple regression
+    /// Calculate R-squared (coefficient of determination)
     fn calculate_r_squared(
         &self,
         target: &ArrayView1<f32>,
         predictors: &[ArrayView1<f32>],
     ) -> Result<f32, ModelError> {
-        let n_samples = target.len();
-        let n_predictors = predictors.len();
-        
-        if n_predictors == 0 {
+        if predictors.is_empty() {
             return Ok(0.0);
         }
         
-        // Create design matrix X with intercept
-        let mut x = Array2::zeros((n_samples, n_predictors + 1));
-        x.slice_mut(s![.., 0]).fill(1.0); // Intercept
-        for (i, predictor) in predictors.iter().enumerate() {
-            x.slice_mut(s![.., i + 1]).assign(predictor);
+        let n_samples = target.len();
+        let n_predictors = predictors.len();
+        
+        // Create design matrix X (with intercept)
+        let mut x = Array2::ones((n_samples, n_predictors + 1));
+        for (j, predictor) in predictors.iter().enumerate() {
+            x.slice_mut(s![.., j + 1]).assign(predictor);
         }
         
-        // Convert target to Array1 for matrix operations
-        let target = Array1::from_iter(target.iter().cloned());
+        // Calculate coefficients using OLS: β = (X'X)^(-1)X'y
+        #[cfg(not(feature = "no-blas"))]
+        let coefficients = {
+            let xtx = x.t().dot(&x);
+            let xty = x.t().dot(target);
+            xtx.solve(&xty)?
+        };
         
-        // Calculate X'X and X'y
-        let xtx = x.t().dot(&x);
-        let xty = x.t().dot(&target);
-        
-        // Solve for coefficients
-        let coefficients = match xtx.solve(&xty) {
-            Ok(coef) => coef,
-            Err(_) => return Ok(0.0),
+        #[cfg(feature = "no-blas")]
+        let coefficients = {
+            let xtx = x.t().dot(&x);
+            let xty = x.t().dot(target);
+            
+            // Use our fallback matrix inversion
+            let xtx_inv = fallback::inv(&xtx)?;
+            
+            // Manually compute (X'X)^(-1)X'y
+            let result = fallback::matmul(&xtx_inv, &xty.into_shape((n_predictors + 1, 1))?)?;
+            result.column(0).to_owned()
         };
         
         // Calculate predicted values
         let y_pred = x.dot(&coefficients);
         
-        // Calculate R²
-        let ss_tot = target.iter().map(|&y| (y - target.mean().unwrap_or(0.0)).powi(2)).sum::<f32>();
-        let ss_res = target.iter().zip(y_pred.iter())
-            .map(|(&y, &y_hat)| (y - y_hat).powi(2))
-            .sum::<f32>();
+        // Calculate R-squared = 1 - SSR/SST
+        let y_mean = target.mean().unwrap_or(0.0);
         
-        if ss_tot < 1e-10 {
+        let mut ss_total = 0.0;
+        let mut ss_residual = 0.0;
+        
+        for i in 0..n_samples {
+            ss_total += (target[i] - y_mean).powi(2);
+            ss_residual += (target[i] - y_pred[i]).powi(2);
+        }
+        
+        if ss_total < 1e-10 {
             Ok(0.0)
         } else {
-            Ok(1.0 - ss_res / ss_tot)
+            Ok((ss_total - ss_residual) / ss_total)
         }
     }
 }
