@@ -1,9 +1,9 @@
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, s, Axis};
-#[cfg(not(feature = "no-blas"))]
+#[cfg(not(feature = "no_blas"))]
 use ndarray_linalg::Solve;
 use crate::error::ModelError;
 
-#[cfg(feature = "no-blas")]
+#[cfg(feature = "no_blas")]
 use crate::fallback;
 
 /// Factor quality metrics for evaluating generated risk factors.
@@ -100,10 +100,10 @@ impl FactorAnalyzer {
                 let prev_factor = factors.slice(s![.., j]);
                 
                 // Calculate projection coefficient (dot product)
-                #[cfg(not(feature = "no-blas"))]
+                #[cfg(not(feature = "no_blas"))]
                 let proj = factor.dot(&prev_factor) / prev_factor.dot(&prev_factor);
                 
-                #[cfg(feature = "no-blas")]
+                #[cfg(feature = "no_blas")]
                 let proj = {
                     let dot1 = factor.iter().zip(prev_factor.iter()).map(|(&a, &b)| a * b).sum::<f32>();
                     let dot2 = prev_factor.iter().map(|&x| x * x).sum::<f32>();
@@ -337,14 +337,14 @@ impl FactorAnalyzer {
         }
         
         // Calculate coefficients using OLS: β = (X'X)^(-1)X'y
-        #[cfg(not(feature = "no-blas"))]
+        #[cfg(not(feature = "no_blas"))]
         let coefficients = {
             let xtx = x.t().dot(&x);
             let xty = x.t().dot(target);
             xtx.solve(&xty)?
         };
         
-        #[cfg(feature = "no-blas")]
+        #[cfg(feature = "no_blas")]
         let coefficients = {
             let xtx = x.t().dot(&x);
             let xty = x.t().dot(target);
