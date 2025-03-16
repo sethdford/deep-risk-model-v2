@@ -13,6 +13,14 @@ use std::error::Error;
 async fn main() -> Result<(), Box<dyn Error>> {
     println!("=== Market Regime Detection and Backtesting Example ===");
     
+    // Check if BLAS is available
+    #[cfg(feature = "no-blas")]
+    {
+        println!("This example requires BLAS support. Please compile with the 'blas' feature enabled.");
+        println!("Try running with: cargo run --bin regime_example --features blas");
+        return Ok(());
+    }
+    
     // Generate synthetic market data
     println!("Generating synthetic market data...");
     let (market_data, regime_changes) = generate_synthetic_data()?;

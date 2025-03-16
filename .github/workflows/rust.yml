@@ -30,9 +30,13 @@ jobs:
       if: matrix.install_deps
       run: |
         sudo apt-get update
-        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev gfortran
+        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev libcblas-dev libblas-dev gfortran
         echo "OPENBLAS_PATH=/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        # Create symbolic links if needed
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/libopenblas.so /usr/lib/libopenblas.so
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/libcblas.so /usr/lib/libcblas.so
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/libblas.so /usr/lib/libblas.so
     
     - name: Set up Rust cache
       uses: actions/cache@v3
@@ -48,8 +52,10 @@ jobs:
     - name: Build with OpenBLAS
       if: matrix.blas == 'with-openblas'
       run: |
-        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu"
+        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu -C link-args=-L/usr/lib"
         cargo build --verbose --features ${{ matrix.features }}
+        # Build examples with the same features
+        cargo build --verbose --features ${{ matrix.features }} --examples
       env:
         OPENBLAS_SYSTEM: 1
     
@@ -61,12 +67,15 @@ jobs:
     
     - name: Build without BLAS
       if: matrix.blas == 'without-blas'
-      run: cargo build --verbose --no-default-features --features ${{ matrix.features }}
+      run: |
+        cargo build --verbose --no-default-features --features ${{ matrix.features }}
+        # Build examples with the same features
+        cargo build --verbose --no-default-features --features ${{ matrix.features }} --examples
     
     - name: Run tests with OpenBLAS
       if: matrix.blas == 'with-openblas'
       run: |
-        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu"
+        export RUSTFLAGS="-C link-args=-L/usr/lib/x86_64-linux-gnu -C link-args=-L/usr/lib"
         cargo test --verbose --features ${{ matrix.features }}
       env:
         OPENBLAS_SYSTEM: 1
