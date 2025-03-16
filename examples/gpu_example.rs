@@ -1,7 +1,7 @@
 use deep_risk_model::{
     prelude::{
-        GPUDeepRiskModel,
-        DeepRiskModel,
+        GPUTransformerRiskModel,
+        TransformerRiskModel,
         ComputeDevice, GPUConfig,
         TransformerConfig,
         MarketData, RiskModel
@@ -33,7 +33,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nGenerating synthetic market data...");
     let n_samples = 200;
     let n_assets = 64;
-    let n_factors = 5;
+    let d_model = 64;
+    let n_heads = 8;
+    let d_ff = 256;
+    let n_layers = 3;
     
     let features = Array::random((n_samples, n_assets), Normal::new(0.0, 1.0).unwrap());
     let returns = Array::random((n_samples, n_assets), Normal::new(0.0, 0.1).unwrap());
@@ -55,10 +58,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(GPUConfig::default())
     };
     
-    let mut gpu_model = GPUDeepRiskModel::new(n_assets, n_factors, gpu_config.clone())?;
+    let mut gpu_model = GPUTransformerRiskModel::new(d_model, n_heads, d_ff, n_layers, gpu_config.clone())?;
     
     // Create CPU model for comparison
-    let mut cpu_model = DeepRiskModel::new(n_assets, n_factors)?;
+    let mut cpu_model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
     
     // Compare training performance
     println!("\nTraining models...");
@@ -134,10 +137,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Create GPU model with custom configuration
     println!("Creating GPU model with custom configuration...");
-    let custom_gpu_model = GPUDeepRiskModel::with_transformer_config(
-        n_assets,
-        n_factors,
-        transformer_config,
+    let custom_gpu_model = GPUTransformerRiskModel::new(
+        transformer_config.d_model,
+        transformer_config.n_heads,
+        transformer_config.d_ff,
+        transformer_config.n_layers,
         Some(custom_gpu_config.clone()),
     )?;
     
@@ -149,9 +153,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n=== Example 3: Switching Between CPU and GPU ===");
     
     // Create model with CPU configuration
-    let mut switchable_model = GPUDeepRiskModel::new(
-        n_assets,
-        n_factors,
+    let mut switchable_model = GPUTransformerRiskModel::new(
+        d_model,
+        n_heads,
+        d_ff,
+        n_layers,
         Some(GPUConfig {
             device: ComputeDevice::CPU,
             ..GPUConfig::default()
@@ -206,11 +212,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Created market data with {} samples and {} assets", large_n_samples, large_n_assets);
     
     // Create models
-    let mut large_cpu_model = DeepRiskModel::new(large_n_assets, n_factors)?;
+    let mut large_cpu_model = TransformerRiskModel::new(large_n_assets, n_heads, d_ff, n_layers)?;
     
-    let large_gpu_model = GPUDeepRiskModel::new(
+    let large_gpu_model = GPUTransformerRiskModel::new(
         large_n_assets,
-        n_factors,
+        n_heads,
+        d_ff,
+        n_layers,
         Some(GPUConfig {
             device: if gpu_available { ComputeDevice::GPU } else { ComputeDevice::CPU },
             use_mixed_precision: true,
