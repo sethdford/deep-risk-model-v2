@@ -35,10 +35,10 @@ rand_chacha = "0.3"
 num-traits = "0.2"
 
 # Linear algebra - simplified approach
-ndarray-linalg = { version = "0.16", features = ["openblas-static", "netlib-static", "intel-mkl-static", "openblas-system"] }
+ndarray-linalg = { version = "0.16", optional = true }
 
 # BLAS implementation options - only one will be used based on features
-openblas-src = { version = "0.10", features = ["cblas"] }
+openblas-src = { version = "0.10", features = ["cblas"], optional = true }
 netlib-src = { version = "0.8", optional = true, features = ["cblas"] }
 intel-mkl-src = { version = "0.8", optional = true }
 accelerate-src = { version = "0.3", optional = true }
@@ -81,16 +81,16 @@ sysinfo = "0.29"
 
 [features]
 # Default features - platform-specific implementation will be selected in build.rs
-default = []
+default = ["no-blas"]
 
 # Platform-specific BLAS implementations
-openblas = ["ndarray/blas", "blas-enabled"]
-netlib = ["ndarray/blas", "dep:netlib-src", "blas-enabled"]
-intel-mkl = ["ndarray/blas", "dep:intel-mkl-src", "blas-enabled"]
-accelerate = ["ndarray/blas", "dep:accelerate-src", "dep:blas-src", "blas-src/accelerate", "blas-enabled"]
+openblas = ["dep:ndarray-linalg", "ndarray/blas", "dep:openblas-src", "blas-enabled"]
+netlib = ["dep:ndarray-linalg", "ndarray/blas", "dep:netlib-src", "blas-enabled"]
+intel-mkl = ["dep:ndarray-linalg", "ndarray/blas", "dep:intel-mkl-src", "blas-enabled"]
+accelerate = ["dep:ndarray-linalg", "ndarray/blas", "dep:accelerate-src", "dep:blas-src", "blas-src/accelerate", "blas-enabled"]
 
 # System BLAS - use pre-installed BLAS libraries (required for Windows)
-system = ["ndarray/blas", "openblas-src/system", "blas-enabled"]
+system = ["dep:ndarray-linalg", "ndarray/blas", "dep:openblas-src", "openblas-src/system", "blas-enabled"]
 
 # Internal feature to track if any BLAS implementation is enabled
 blas-enabled = []
@@ -104,7 +104,7 @@ gpu = []  # Will include CUDA dependencies when they are properly implemented
 # Ensure tests always use BLAS
 [dev-dependencies.deep_risk_model]
 path = "."
-features = ["openblas"]
+features = ["no-blas"]
 
 [dev-dependencies]
 # Async testing
