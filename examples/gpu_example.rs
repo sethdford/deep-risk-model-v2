@@ -7,6 +7,7 @@ use deep_risk_model::{
         MarketData, RiskModel
     },
     gpu::{is_cuda_available, get_gpu_info},
+    error::ModelError,
 };
 use ndarray::Array;
 use ndarray_rand::RandomExt;
@@ -19,6 +20,7 @@ use std::time::Instant;
 /// 2. How to check for GPU availability
 /// 3. How to compare performance between CPU and GPU implementations
 /// 4. How to use different configuration options
+/// 5. How to handle cases when BLAS is not available
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== GPU Acceleration Example ===\n");
@@ -58,7 +60,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(GPUConfig::default())
     };
     
-    let mut gpu_model = GPUTransformerRiskModel::new(d_model, n_heads, d_ff, n_layers, gpu_config.clone())?;
+    // Try to create GPU model, handle potential BLAS unavailability
+    let mut gpu_model = match GPUTransformerRiskModel::new(d_model, n_heads, d_ff, n_layers, gpu_config.clone()) {
+        Ok(model) => model,
+        Err(e) => {
+            if let Some(model_err) = e.downcast_ref::<ModelError>() {
+                match model_err {
+                    ModelError::UnsupportedOperation(_) => {
+                        println!("BLAS not available, using CPU-only implementation");
+                        // Fall back to CPU model
+                        TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?
+                    },
+                    _ => return Err(e),
+                }
+            } else {
+                return Err(e);
+            }
+        }
+    };
     
     // Create CPU model for comparison
     let mut cpu_model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
@@ -72,9 +91,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("CPU training time: {:?}", cpu_train_time);
     
     let gpu_start = Instant::now();
-    gpu_model.train(&market_data).await?;
-    let gpu_train_time = gpu_start.elapsed();
-    println!("GPU training time: {:?}", gpu_train_time);
+    // Handle potential errors during GPU training
+    match gpu_model.train(&market_data).await {
+        Ok(_) => {
+            let gpu_train_time = gpu_start.elapsed();
+            println!("GPU training time: {:?}", gpu_train_time);
+        },
+        Err(e) => {
+            println!("GPU training failed: {}", e);
+            println!("This may be due to missing BLAS libraries or GPU drivers");
+        }
+    }
     
     // Compare risk factor generation performance
     println!("\nGenerating risk factors...");
@@ -86,10 +113,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("CPU factors shape: {:?}", cpu_factors.factors().shape());
     
     let gpu_start = Instant::now();
-    let gpu_factors = gpu_model.generate_risk_factors(&market_data).await?;
-    let gpu_factor_time = gpu_start.elapsed();
-    println!("GPU factor generation time: {:?}", gpu_factor_time);
-    println!("GPU factors shape: {:?}", gpu_factors.factors().shape());
+    // Handle potential errors during GPU risk factor generation
+    match gpu_model.generate_risk_factors(&market_data).await {
+        Ok(gpu_factors) => {
+            let gpu_factor_time = gpu_start.elapsed();
+            println!("GPU factor generation time: {:?}", gpu_factor_time);
+            println!("GPU factors shape: {:?}", gpu_factors.factors().shape());
+            
+            // Calculate speedup
+            println!("\nPerformance comparison:");
+            let factor_speedup = cpu_factor_time.as_secs_f64() / gpu_factor_time.as_secs_f64();
+            println!("Factor generation speedup: {:.2}x", factor_speedup);
+        },
+        Err(e) => {
+            println!("GPU factor generation failed: {}", e);
+            println!("This may be due to missing BLAS libraries or GPU drivers");
+        }
+    }
     
     // Compare covariance estimation performance
     println!("\nEstimating covariance matrices...");
@@ -100,16 +140,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("CPU covariance estimation time: {:?}", cpu_cov_time);
     
     let gpu_start = Instant::now();
-    let gpu_cov = gpu_model.estimate_covariance(&market_data).await?;
-    let gpu_cov_time = gpu_start.elapsed();
-    println!("GPU covariance estimation time: {:?}", gpu_cov_time);
-    
-    // Calculate speedup
-    println!("\nPerformance comparison:");
-    let factor_speedup = cpu_factor_time.as_secs_f64() / gpu_factor_time.as_secs_f64();
-    let cov_speedup = cpu_cov_time.as_secs_f64() / gpu_cov_time.as_secs_f64();
-    println!("Factor generation speedup: {:.2}x", factor_speedup);
-    println!("Covariance estimation speedup: {:.2}x", cov_speedup);
+    // Handle potential errors during GPU covariance estimation
+    match gpu_model.estimate_covariance(&market_data).await {
+        Ok(gpu_cov) => {
+            let gpu_cov_time = gpu_start.elapsed();
+            println!("GPU covariance estimation time: {:?}", gpu_cov_time);
+            
+            // Calculate speedup
+            let cov_speedup = cpu_cov_time.as_secs_f64() / gpu_cov_time.as_secs_f64();
+            println!("Covariance estimation speedup: {:.2}x", cov_speedup);
+        },
+        Err(e) => {
+            println!("GPU covariance estimation failed: {}", e);
+            println!("This may be due to missing BLAS libraries or GPU drivers");
+        }
+    }
     
     // Example 2: Custom GPU configuration
     println!("\n=== Example 2: Custom GPU Configuration ===");
@@ -137,23 +182,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Create GPU model with custom configuration
     println!("Creating GPU model with custom configuration...");
-    let custom_gpu_model = GPUTransformerRiskModel::new(
+    match GPUTransformerRiskModel::new(
         transformer_config.d_model,
         transformer_config.n_heads,
         transformer_config.d_ff,
         transformer_config.n_layers,
         Some(custom_gpu_config.clone()),
-    )?;
-    
-    println!("Custom GPU model created successfully");
-    println!("Using GPU: {}", custom_gpu_model.is_using_gpu());
-    println!("GPU config: {:?}", custom_gpu_model.gpu_config());
+    ) {
+        Ok(custom_gpu_model) => {
+            println!("Custom GPU model created successfully");
+            println!("Using GPU: {}", custom_gpu_model.is_using_gpu());
+            println!("GPU config: {:?}", custom_gpu_model.gpu_config());
+        },
+        Err(e) => {
+            println!("Failed to create custom GPU model: {}", e);
+            println!("This may be due to missing BLAS libraries or GPU drivers");
+        }
+    }
     
     // Example 3: Switching between CPU and GPU
     println!("\n=== Example 3: Switching Between CPU and GPU ===");
     
-    // Create model with CPU configuration
-    let mut switchable_model = GPUTransformerRiskModel::new(
+    // Try to create switchable model, handle potential errors
+    match GPUTransformerRiskModel::new(
         d_model,
         n_heads,
         d_ff,
@@ -162,39 +213,58 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             device: ComputeDevice::CPU,
             ..GPUConfig::default()
         }),
-    )?;
-    
-    println!("Model initially using CPU: {}", !switchable_model.is_using_gpu());
-    
-    // Run on CPU
-    let cpu_start = Instant::now();
-    let _cpu_result = switchable_model.generate_risk_factors(&market_data).await?;
-    let cpu_time = cpu_start.elapsed();
-    println!("Time with CPU: {:?}", cpu_time);
-    
-    // Switch to GPU if available
-    if gpu_available {
-        println!("\nSwitching to GPU...");
-        switchable_model.set_gpu_config(GPUConfig {
-            device: ComputeDevice::GPU,
-            use_mixed_precision: true,
-            batch_size: 64,
-            use_tensor_cores: true,
-        });
-        
-        println!("Now using GPU: {}", switchable_model.is_using_gpu());
-        
-        // Run on GPU
-        let gpu_start = Instant::now();
-        let _gpu_result = switchable_model.generate_risk_factors(&market_data).await?;
-        let gpu_time = gpu_start.elapsed();
-        println!("Time with GPU: {:?}", gpu_time);
-        
-        // Calculate speedup
-        let speedup = cpu_time.as_secs_f64() / gpu_time.as_secs_f64();
-        println!("Speedup after switching to GPU: {:.2}x", speedup);
-    } else {
-        println!("GPU not available for switching");
+    ) {
+        Ok(mut switchable_model) => {
+            println!("Model initially using CPU: {}", !switchable_model.is_using_gpu());
+            
+            // Run on CPU
+            let cpu_start = Instant::now();
+            match switchable_model.generate_risk_factors(&market_data).await {
+                Ok(_cpu_result) => {
+                    let cpu_time = cpu_start.elapsed();
+                    println!("Time with CPU: {:?}", cpu_time);
+                    
+                    // Switch to GPU if available
+                    if gpu_available {
+                        println!("\nSwitching to GPU...");
+                        switchable_model.set_gpu_config(GPUConfig {
+                            device: ComputeDevice::GPU,
+                            use_mixed_precision: true,
+                            batch_size: 64,
+                            use_tensor_cores: true,
+                        });
+                        
+                        println!("Now using GPU: {}", switchable_model.is_using_gpu());
+                        
+                        // Run on GPU
+                        let gpu_start = Instant::now();
+                        match switchable_model.generate_risk_factors(&market_data).await {
+                            Ok(_gpu_result) => {
+                                let gpu_time = gpu_start.elapsed();
+                                println!("Time with GPU: {:?}", gpu_time);
+                                
+                                // Calculate speedup
+                                let speedup = cpu_time.as_secs_f64() / gpu_time.as_secs_f64();
+                                println!("Speedup after switching to GPU: {:.2}x", speedup);
+                            },
+                            Err(e) => {
+                                println!("GPU operation failed after switching: {}", e);
+                                println!("This may be due to missing BLAS libraries or GPU drivers");
+                            }
+                        }
+                    } else {
+                        println!("GPU not available for switching");
+                    }
+                },
+                Err(e) => {
+                    println!("CPU operation failed: {}", e);
+                }
+            }
+        },
+        Err(e) => {
+            println!("Failed to create switchable model: {}", e);
+            println!("This may be due to missing BLAS libraries or GPU drivers");
+        }
     }
     
     // Example 4: Large-scale performance test
@@ -214,7 +284,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create models
     let mut large_cpu_model = TransformerRiskModel::new(large_n_assets, n_heads, d_ff, n_layers)?;
     
-    let large_gpu_model = GPUTransformerRiskModel::new(
+    // Try to create large GPU model, handle potential errors
+    match GPUTransformerRiskModel::new(
         large_n_assets,
         n_heads,
         d_ff,
@@ -225,24 +296,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             batch_size: 128,
             use_tensor_cores: true,
         }),
-    )?;
-    
-    // Compare performance
-    println!("\nGenerating risk factors for large dataset...");
-    
-    let cpu_start = Instant::now();
-    let _large_cpu_factors = large_cpu_model.generate_risk_factors(&large_market_data).await?;
-    let cpu_time = cpu_start.elapsed();
-    println!("CPU time for large dataset: {:?}", cpu_time);
-    
-    let gpu_start = Instant::now();
-    let _large_gpu_factors = large_gpu_model.generate_risk_factors(&large_market_data).await?;
-    let gpu_time = gpu_start.elapsed();
-    println!("GPU time for large dataset: {:?}", gpu_time);
-    
-    if gpu_available {
-        let speedup = cpu_time.as_secs_f64() / gpu_time.as_secs_f64();
-        println!("Speedup for large dataset: {:.2}x", speedup);
+    ) {
+        Ok(large_gpu_model) => {
+            // Compare performance
+            println!("\nGenerating risk factors for large dataset...");
+            
+            let cpu_start = Instant::now();
+            match large_cpu_model.generate_risk_factors(&large_market_data).await {
+                Ok(_large_cpu_factors) => {
+                    let cpu_time = cpu_start.elapsed();
+                    println!("CPU time for large dataset: {:?}", cpu_time);
+                    
+                    let gpu_start = Instant::now();
+                    match large_gpu_model.generate_risk_factors(&large_market_data).await {
+                        Ok(_large_gpu_factors) => {
+                            let gpu_time = gpu_start.elapsed();
+                            println!("GPU time for large dataset: {:?}", gpu_time);
+                            
+                            if gpu_available {
+                                let speedup = cpu_time.as_secs_f64() / gpu_time.as_secs_f64();
+                                println!("Speedup for large dataset: {:.2}x", speedup);
+                            }
+                        },
+                        Err(e) => {
+                            println!("GPU operation failed for large dataset: {}", e);
+                            println!("This may be due to missing BLAS libraries or GPU drivers");
+                        }
+                    }
+                },
+                Err(e) => {
+                    println!("CPU operation failed for large dataset: {}", e);
+                }
+            }
+        },
+        Err(e) => {
+            println!("Failed to create large GPU model: {}", e);
+            println!("This may be due to missing BLAS libraries or GPU drivers");
+        }
     }
     
     println!("\n=== GPU Example Completed Successfully ===");
