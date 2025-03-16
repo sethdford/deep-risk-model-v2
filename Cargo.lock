@@ -774,6 +774,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c8214115b7bf84099f1309324e63141d4c5d7cc26862f97a0a857dbefe165bd"
 
 [[package]]
+name = "blas-src"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb48fbaa7a0cb9d6d96c46bac6cedb16f13a10aebcef1c4e73515aaae8c9909d"
+dependencies = [
+ "accelerate-src",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1107,9 +1116,9 @@ dependencies = [
  "aws-sdk-s3",
  "aws-types 1.3.6",
  "axum",
+ "blas-src",
  "chrono",
  "criterion",
- "deep_risk_model",
  "intel-mkl-src",
  "lambda_http",
  "lambda_runtime",
