@@ -237,6 +237,10 @@ To use the no-BLAS implementation:
 cargo build --no-default-features --features no-blas
 ```
 
+> **Note for Windows Users**: The no-BLAS feature is currently not supported on Windows without vcpkg. 
+> This is due to limitations in how the `openblas-src` crate handles Windows builds. If you need to 
+> build on Windows, please use vcpkg with the OpenBLAS feature or use WSL (Windows Subsystem for Linux).
+
 This allows the library to be used in environments where installing BLAS dependencies is not possible or practical, such as WebAssembly targets or certain embedded systems.
 
 ## 🛠️ Technical Stack

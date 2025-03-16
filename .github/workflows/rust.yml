@@ -26,6 +26,9 @@ jobs:
           # Exclude Windows with OpenBLAS for now as it can be problematic
           - os: windows-latest
             blas: with-blas
+          # Exclude Windows with no-blas as it's not supported without vcpkg
+          - os: windows-latest
+            blas: without-blas
 
     steps:
     - uses: actions/checkout@v4
