@@ -1,0 +1,12 @@
+[target.'cfg(target_os = "linux")'.dependencies]
+ndarray-linalg = { version = "0.16", features = ["openblas-static"] }
+openblas-src = { version = "0.10", features = ["cblas"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+ndarray-linalg = { version = "0.16" }
+blas-src = { version = "0.8", features = ["accelerate"] }
+accelerate-src = { version = "0.3" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+ndarray-linalg = { version = "0.16", features = ["openblas-system"] }
+openblas-src = { version = "0.10", features = ["cblas", "system"] } 

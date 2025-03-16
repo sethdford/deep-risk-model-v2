@@ -35,6 +35,9 @@ fn main() {
                 println!("cargo:rustc-cfg=feature=\"openblas\"");
                 println!("cargo:rustc-cfg=feature=\"blas-enabled\"");
                 println!("cargo:warning=Using OpenBLAS for BLAS operations");
+                
+                // Explicitly link to OpenBLAS on Linux
+                println!("cargo:rustc-link-lib=openblas");
             }
         }
     }
@@ -110,7 +113,30 @@ fn main() {
             // Linux-specific configurations
             if openblas_enabled {
                 println!("cargo:warning=Using OpenBLAS on Linux");
-                // No special handling needed as OpenBLAS is typically well-supported on Linux
+                // Try to find OpenBLAS in common locations
+                let linux_paths = [
+                    "/usr/lib",
+                    "/usr/lib/x86_64-linux-gnu",
+                    "/usr/lib/aarch64-linux-gnu",
+                    "/usr/local/lib",
+                ];
+                
+                let mut found_openblas = false;
+                
+                // Check if OpenBLAS exists in any of the paths
+                for path in linux_paths.iter() {
+                    if std::path::Path::new(&format!("{}/libopenblas.so", path)).exists() {
+                        println!("cargo:rustc-link-search={}", path);
+                        println!("cargo:warning=Found OpenBLAS at {}", path);
+                        found_openblas = true;
+                        break;
+                    }
+                }
+                
+                if !found_openblas {
+                    println!("cargo:warning=Could not find OpenBLAS in standard locations");
+                    println!("cargo:warning=You may need to install it: sudo apt-get install libopenblas-dev");
+                }
             }
         }
     }
