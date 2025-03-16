@@ -36,6 +36,12 @@ jobs:
       if: matrix.blas == 'with-openblas'
       run: cargo build --verbose --features ${{ matrix.features }}
     
+    - name: Clean before building without BLAS
+      if: matrix.blas == 'without-blas'
+      run: |
+        cargo clean
+        rm -f Cargo.lock
+    
     - name: Build without BLAS
       if: matrix.blas == 'without-blas'
       run: cargo build --verbose --no-default-features --features ${{ matrix.features }}

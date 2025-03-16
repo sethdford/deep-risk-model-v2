@@ -89,11 +89,18 @@ blas = [
 no-blas = []
 
 # BLAS implementation features - all depend on the blas feature
-# These features should only be enabled when blas is enabled
-openblas-system = ["blas", "ndarray-linalg?/openblas-system", "openblas-src?/system"]
-netlib = ["blas", "ndarray-linalg?/netlib"]
-intel-mkl = ["blas", "ndarray-linalg?/intel-mkl"]
-accelerate = ["blas", "ndarray-linalg?/accelerate"]
+openblas-system = ["blas"]
+netlib = ["blas"]
+intel-mkl = ["blas"]
+accelerate = ["blas"]
+
+# When specific BLAS implementations are enabled, enable their features on the dependencies
+[package.metadata.cargo-features]
+openblas-system.ndarray-linalg = ["openblas-system"]
+openblas-system.openblas-src = ["system"]
+netlib.ndarray-linalg = ["netlib"]
+intel-mkl.ndarray-linalg = ["intel-mkl"]
+accelerate.ndarray-linalg = ["accelerate"]
 
 # GPU feature - placeholder for future GPU support
 gpu = []  # Will include CUDA dependencies when they are properly implemented
