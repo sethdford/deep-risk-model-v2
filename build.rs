@@ -7,6 +7,7 @@ fn main() {
     let accelerate_enabled = std::env::var("CARGO_FEATURE_ACCELERATE").is_ok();
     let intel_mkl_enabled = std::env::var("CARGO_FEATURE_INTEL_MKL").is_ok();
     let no_blas_enabled = std::env::var("CARGO_FEATURE_NO_BLAS").is_ok();
+    let blas_enabled = std::env::var("CARGO_FEATURE_BLAS_ENABLED").is_ok();
     
     let any_blas_feature_enabled = openblas_enabled || accelerate_enabled || intel_mkl_enabled;
     
@@ -17,7 +18,7 @@ fn main() {
         println!("cargo:warning=Note: Some operations on large matrices will be slower");
         
         // If both no-blas and a BLAS implementation are enabled, warn about it and disable BLAS features
-        if any_blas_feature_enabled {
+        if any_blas_feature_enabled || blas_enabled {
             println!("cargo:warning=Both no-blas and a BLAS implementation are enabled. Using no-blas mode.");
             
             // Disable all BLAS features at the rustc level
@@ -62,13 +63,13 @@ fn main() {
     // Platform-specific optimizations and configurations
     match target_os.as_str() {
         "macos" => {
-            if accelerate_enabled {
+            if accelerate_enabled && !no_blas_enabled {
                 println!("cargo:warning=Using Apple's Accelerate framework for optimal performance on macOS");
                 println!("cargo:rustc-link-lib=framework=Accelerate");
                 
                 // Explicitly set the framework path
                 println!("cargo:rustc-link-search=framework=/System/Library/Frameworks");
-            } else if openblas_enabled {
+            } else if openblas_enabled && !no_blas_enabled {
                 println!("cargo:warning=Using OpenBLAS on macOS. Consider using the 'accelerate' feature for better performance");
                 
                 // Try to find OpenBLAS in common locations
@@ -97,7 +98,7 @@ fn main() {
         },
         _ => {
             // Linux-specific configurations
-            if openblas_enabled {
+            if openblas_enabled && !no_blas_enabled {
                 println!("cargo:warning=Using OpenBLAS on Linux");
                 // Try to find OpenBLAS in common locations
                 let linux_paths = [

@@ -72,13 +72,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Verify correctness
     let reconstructed = sparse_weights.to_dense();
-    let mut sum_squared_error = 0.0;
+    let mut _sum_squared_error = 0.0;
     let mut max_diff: f32 = 0.0;
     
     for i in 0..dense_weights.shape()[0] {
         for j in 0..dense_weights.shape()[1] {
             let diff = (dense_weights[[i, j]] - reconstructed[[i, j]]).abs();
-            sum_squared_error += diff * diff;
+            _sum_squared_error += diff * diff;
             max_diff = max_diff.max(diff);
         }
     }

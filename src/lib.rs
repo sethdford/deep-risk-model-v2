@@ -174,71 +174,20 @@ mod tests {
     }
 }
 
-// Conditional imports based on features
-#[cfg(all(feature = "blas-enabled", not(feature = "no-blas")))]
+// Export the ndarray_linalg module for use by other modules
+#[cfg(feature = "blas-enabled")]
 pub use ndarray_linalg;
 
-// When no-blas is enabled or blas-enabled is not set, provide fallback implementations
-#[cfg(any(feature = "no-blas", not(feature = "blas-enabled")))]
+#[cfg(not(feature = "blas-enabled"))]
 pub mod ndarray_linalg {
-    // Empty module to satisfy imports when BLAS is not available
-    pub mod error {
-        #[derive(Debug)]
-        pub struct LinalgError;
-        
-        impl std::fmt::Display for LinalgError {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "Linear algebra operation failed (fallback implementation)")
-            }
-        }
-        
-        impl std::error::Error for LinalgError {}
-    }
+    // Provide a minimal fallback implementation for when BLAS is not available
+    #[derive(Debug, thiserror::Error)]
+    #[error("BLAS operations are not available in no-blas mode")]
+    pub struct LinalgError;
     
-    pub trait Solve<T> {
-        type Output;
-        fn solve(&self, _b: &T) -> Result<Self::Output, error::LinalgError>;
-    }
-    
-    pub trait Eigh {
-        type Output;
-        fn eigh(&self) -> Result<Self::Output, error::LinalgError>;
-    }
-    
-    pub trait Svd {
-        type Output;
-        fn svd(&self) -> Result<Self::Output, error::LinalgError>;
-    }
-    
-    // Implement the traits for Array2 to provide fallback implementations
-    impl<S, D> Solve<ndarray::ArrayBase<S, D>> for ndarray::Array2<f32>
-    where
-        S: ndarray::Data<Elem = f32>,
-        D: ndarray::Dimension,
-    {
-        type Output = ndarray::Array<f32, D>;
-        
-        fn solve(&self, _b: &ndarray::ArrayBase<S, D>) -> Result<Self::Output, error::LinalgError> {
-            // Use fallback implementation
-            Err(error::LinalgError)
-        }
-    }
-    
-    impl Eigh for ndarray::Array2<f32> {
-        type Output = (ndarray::Array<f32, ndarray::Ix1>, ndarray::Array<f32, ndarray::Ix2>);
-        
-        fn eigh(&self) -> Result<Self::Output, error::LinalgError> {
-            // Use fallback implementation
-            Err(error::LinalgError)
-        }
-    }
-    
-    impl Svd for ndarray::Array2<f32> {
-        type Output = (ndarray::Array<f32, ndarray::Ix2>, ndarray::Array<f32, ndarray::Ix1>, ndarray::Array<f32, ndarray::Ix2>);
-        
-        fn svd(&self) -> Result<Self::Output, error::LinalgError> {
-            // Use fallback implementation
-            Err(error::LinalgError)
+    impl std::fmt::Display for LinalgError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "BLAS operations are not available in no-blas mode")
         }
     }
 }
