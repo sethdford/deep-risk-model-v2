@@ -266,7 +266,7 @@ impl FactorAnalyzer {
         
         // Convert n to f32 before subtraction to avoid type errors
         let n_f32 = n as f32;
-        cov /= (n_f32 - 1.0);
+        cov /= n_f32 - 1.0;
         
         Ok(cov / (std_x * std_y))
     }
