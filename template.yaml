@@ -4,14 +4,41 @@ Description: >
   deep-risk-model
   SAM Template for deep-risk-model Lambda function
 
+Parameters:
+  EnvironmentType:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Environment type for deployment
+
+Mappings:
+  EnvironmentConfig:
+    dev:
+      LogLevel: DEBUG
+      MemorySize: 1024
+      Timeout: 30
+    staging:
+      LogLevel: INFO
+      MemorySize: 1536
+      Timeout: 60
+    prod:
+      LogLevel: INFO
+      MemorySize: 2048
+      Timeout: 90
+
 Globals:
   Function:
-    Timeout: 30
-    MemorySize: 1024
+    Timeout: !FindInMap [EnvironmentConfig, !Ref EnvironmentType, Timeout]
+    MemorySize: !FindInMap [EnvironmentConfig, !Ref EnvironmentType, MemorySize]
 
 Resources:
   DeepRiskModelFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       CodeUri: .
       Handler: bootstrap
@@ -27,6 +54,8 @@ Resources:
       Environment:
         Variables:
           RUST_BACKTRACE: 1
+          ENVIRONMENT: !Ref EnvironmentType
+          LOG_LEVEL: !FindInMap [EnvironmentConfig, !Ref EnvironmentType, LogLevel]
       Policies:
         - AWSLambdaBasicExecutionRole
 
@@ -36,4 +65,7 @@ Outputs:
     Value: !GetAtt DeepRiskModelFunction.Arn
   DeepRiskModelApi:
     Description: "API Gateway endpoint URL for Prod stage for Deep Risk Model function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/risk-model/" 
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/risk-model/"
+  Environment:
+    Description: "Deployment environment"
+    Value: !Ref EnvironmentType 

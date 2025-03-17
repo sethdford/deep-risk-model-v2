@@ -648,3 +648,130 @@ Where:
 Where:
 - `factors` is a 2D array of risk factor values
 - `covariance` is a 2D array representing the covariance matrix
+
+# Deep Risk Model Lambda Function
+
+This project implements a Lambda function for the Deep Risk Model, which analyzes financial data to generate risk factors and covariance matrices.
+
+## Architecture
+
+The Deep Risk Model Lambda function is built with Rust and deployed to AWS Lambda using the Serverless Application Model (SAM). It exposes an API endpoint through API Gateway that accepts POST requests with financial data and returns risk analysis results.
+
+## CI/CD Pipeline
+
+The project uses GitHub Actions for CI/CD, with automatic deployments to different environments based on the branch:
+
+- `develop` branch → Dev environment
+- `release/*` branches → Staging environment
+- `main` branch → Production environment
+
+You can also manually trigger a deployment to any environment using the GitHub Actions workflow dispatch.
+
+## Prerequisites
+
+To set up the CI/CD pipeline, you need:
+
+1. An AWS account with appropriate permissions
+2. GitHub repository secrets:
+   - `AWS_ACCESS_KEY_ID`: Your AWS access key
+   - `AWS_SECRET_ACCESS_KEY`: Your AWS secret key
+   - `AWS_REGION`: The AWS region to deploy to (e.g., `us-east-1`)
+
+## Local Development
+
+### Prerequisites
+
+- [Rust](https://www.rust-lang.org/tools/install)
+- [Docker](https://docs.docker.com/get-docker/)
+- [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
+
+### Building and Testing Locally
+
+1. Build the project:
+   ```bash
+   make build
+   ```
+
+2. Run tests:
+   ```bash
+   make test
+   ```
+
+3. Test the model with sample data:
+   ```bash
+   make local-invoke
+   ```
+
+4. Build with SAM:
+   ```bash
+   make sam-build
+   ```
+
+5. Invoke the Lambda function locally:
+   ```bash
+   make sam-local-invoke
+   ```
+
+6. Start a local API endpoint:
+   ```bash
+   make sam-local-api
+   ```
+
+### Deploying Manually
+
+You can deploy to different environments manually using SAM:
+
+```bash
+# Deploy to dev
+sam deploy --config-env dev
+
+# Deploy to staging
+sam deploy --config-env staging
+
+# Deploy to production
+sam deploy --config-env prod
+```
+
+## API Usage
+
+### Request Format
+
+Send a POST request to the API endpoint with the following JSON structure:
+
+```json
+{
+  "features": [
+    [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+    [7.0, 8.0, 9.0, 10.0, 11.0, 12.0]
+  ],
+  "returns": [
+    [0.01, 0.02, 0.03],
+    [0.04, 0.05, 0.06]
+  ]
+}
+```
+
+### Response Format
+
+The API returns a JSON response with the following structure:
+
+```json
+{
+  "factors": [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]],
+  "covariance": [[1.0, 0.5], [0.5, 1.0]]
+}
+```
+
+## Environment Configuration
+
+The Lambda function is configured differently for each environment:
+
+- **Dev**: 1024 MB memory, 30-second timeout, DEBUG log level
+- **Staging**: 1536 MB memory, 60-second timeout, INFO log level
+- **Production**: 2048 MB memory, 90-second timeout, INFO log level
+
+## Monitoring and Troubleshooting
+
+- CloudWatch Logs: All Lambda function logs are sent to CloudWatch Logs
+- CloudWatch Metrics: Lambda metrics are available in CloudWatch
+- GitHub Actions: Deployment logs are available in the GitHub Actions tab

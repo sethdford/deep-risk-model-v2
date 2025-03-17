@@ -1,4 +1,4 @@
-.PHONY: build test clean deploy local-invoke
+.PHONY: build test clean deploy local-invoke build-DeepRiskModelFunction
 
 # Build the project
 build:
@@ -22,7 +22,7 @@ sam-deploy: sam-build
 
 # Invoke the Lambda function locally
 local-invoke: build
-	cargo run --bin lambda_local < lambda_test_payload.json
+	cargo run --bin test_model < events/test_event_direct.json
 
 # Generate test payload
 generate-payload:
@@ -34,4 +34,14 @@ sam-local-api: sam-build
 
 # Invoke the Lambda function locally with SAM
 sam-local-invoke: sam-build
-	sam local invoke DeepRiskModelFunction -e events/test_event_lambda.json 
+	sam local invoke DeepRiskModelFunction -e events/test_event_lambda.json
+
+# Build target for SAM
+build-DeepRiskModelFunction:
+	@echo "Building DeepRiskModelFunction using Docker..."
+	mkdir -p $(ARTIFACTS_DIR)
+	docker build -t deep-risk-model:latest .
+	docker create --name extract deep-risk-model:latest
+	docker cp extract:/var/runtime/bootstrap $(ARTIFACTS_DIR)/bootstrap
+	docker rm extract
+	chmod +x $(ARTIFACTS_DIR)/bootstrap 

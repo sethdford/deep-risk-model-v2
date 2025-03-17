@@ -1,0 +1,58 @@
+version = 0.1
+[default]
+[default.build]
+[default.build.parameters]
+cached = true
+parallel = true
+beta_features = true
+
+[default.local_invoke]
+[default.local_invoke.parameters]
+event = "events/test-event.json"
+
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "deep-risk-model-dev"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket"
+s3_prefix = "deep-risk-model"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "EnvironmentType=dev"
+image_repositories = []
+
+[dev]
+[dev.deploy]
+[dev.deploy.parameters]
+stack_name = "deep-risk-model-dev"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket"
+s3_prefix = "deep-risk-model-dev"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "EnvironmentType=dev"
+image_repositories = []
+
+[staging]
+[staging.deploy]
+[staging.deploy.parameters]
+stack_name = "deep-risk-model-staging"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket"
+s3_prefix = "deep-risk-model-staging"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "EnvironmentType=staging"
+image_repositories = []
+
+[prod]
+[prod.deploy]
+[prod.deploy.parameters]
+stack_name = "deep-risk-model-prod"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket"
+s3_prefix = "deep-risk-model-prod"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "EnvironmentType=prod"
+image_repositories = [] 

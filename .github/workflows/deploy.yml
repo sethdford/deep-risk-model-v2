@@ -1,28 +1,66 @@
-name: Deploy to AWS
+name: Deploy Deep Risk Model Lambda
 
 on:
   push:
     branches:
       - main
+      - develop
+      - 'release/**'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
 
 jobs:
-  deploy:
+  determine-environment:
     runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      stack-name: ${{ steps.set-env.outputs.stack-name }}
+    steps:
+      - name: Determine environment from branch or input
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            ENVIRONMENT="${{ github.event.inputs.environment }}"
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            ENVIRONMENT="prod"
+          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            ENVIRONMENT="dev"
+          elif [[ "${{ github.ref }}" == refs/heads/release/* ]]; then
+            ENVIRONMENT="staging"
+          else
+            ENVIRONMENT="dev"
+          fi
+          
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "stack-name=deep-risk-model-$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "Selected environment: $ENVIRONMENT"
+
+  build-and-deploy:
+    needs: determine-environment
+    runs-on: ubuntu-latest
+    environment: ${{ needs.determine-environment.outputs.environment }}
     steps:
       - uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
           target: aarch64-unknown-linux-gnu
           override: true
-
-      - name: Install cross-compilation dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -34,7 +72,7 @@ jobs:
           pip install aws-sam-cli
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -46,4 +84,34 @@ jobs:
 
       - name: Deploy with SAM
         run: |
-          sam deploy --stack-name deep-risk-model --no-confirm-changeset --no-fail-on-empty-changeset 
+          ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
+          
+          # Deploy using the appropriate config from samconfig.toml
+          sam deploy --config-env $ENVIRONMENT
+
+      - name: Get API Gateway URL
+        run: |
+          STACK_NAME="${{ needs.determine-environment.outputs.stack-name }}"
+          API_URL=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='DeepRiskModelApi'].OutputValue" --output text)
+          echo "API Gateway URL: $API_URL"
+          echo "API_URL=$API_URL" >> $GITHUB_ENV
+
+      - name: Test API Endpoint
+        run: |
+          # Create a test payload
+          cat > test-payload.json << EOF
+          {
+            "features": [
+              [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+              [7.0, 8.0, 9.0, 10.0, 11.0, 12.0]
+            ],
+            "returns": [
+              [0.01, 0.02, 0.03],
+              [0.04, 0.05, 0.06]
+            ]
+          }
+          EOF
+          
+          # Send a test request to the API
+          echo "Testing API endpoint: $API_URL"
+          curl -X POST -H "Content-Type: application/json" -d @test-payload.json $API_URL || echo "API test failed, but continuing deployment" 
