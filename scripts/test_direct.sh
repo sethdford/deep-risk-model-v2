@@ -38,7 +38,7 @@ EOF
 
 echo "Creating a simple test program..."
 mkdir -p src/bin
-cat > src/bin/test_model.rs << EOF
+cat > src/bin/run_model_with_test_data.rs << EOF
 use deep_risk_model::prelude::*;
 use ndarray::Array2;
 use serde_json::{Value, from_str};
@@ -92,4 +92,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
 EOF
 
 echo "Building and running the test program..."
-cargo run --release --features no-blas --no-default-features --bin test_model 
+cargo run --release --features no-blas --no-default-features --bin run_model_with_test_data 

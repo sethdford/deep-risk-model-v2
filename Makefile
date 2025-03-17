@@ -22,11 +22,11 @@ sam-deploy: sam-build
 
 # Invoke the Lambda function locally
 local-invoke: build
-	cargo run --bin test_model < events/test_event_direct.json
+	cargo run --bin run_model_with_test_data < events/test_event_direct.json
 
 # Generate test payload
 generate-payload:
-	cargo run --bin test_lambda_local
+	cargo run --bin generate_lambda_payload
 
 # Start local API
 sam-local-api: sam-build

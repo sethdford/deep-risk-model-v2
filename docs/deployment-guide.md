@@ -17,7 +17,7 @@ The Deep Risk Model project is structured as follows:
 - `src/`: Contains the Rust source code
   - `bin/`: Contains binary executables
     - `bootstrap.rs`: The Lambda function entry point
-    - `test_model.rs`: A utility for testing the model locally
+    - `run_model_with_test_data.rs`: A utility for testing the model locally
   - `lib.rs`: The library code
   - Other modules: Implementation of the risk model
 - `events/`: Contains test event files
@@ -32,7 +32,7 @@ Before deploying to AWS, you can test the model locally:
 
 1. Test the model directly:
    ```bash
-   cargo run --bin test_model < events/test_event_direct.json
+   cargo run --bin run_model_with_test_data < events/test_event_direct.json
    ```
 
 2. Test the Lambda function locally with SAM (requires Docker running):
