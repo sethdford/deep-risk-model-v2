@@ -21,10 +21,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize model with appropriate size based on BLAS availability
     #[cfg(not(feature = "no-blas"))]
-    let mut model = DeepRiskModel::new(100, 10)?;
+    let mut model = DeepRiskModel::new(
+        100, // n_assets
+        10,  // n_factors
+        50,  // max_seq_len
+        200, // d_model
+        4,   // n_heads
+        256, // d_ff
+        3    // n_layers
+    )?;
     
     #[cfg(feature = "no-blas")]
-    let mut model = DeepRiskModel::new(10, 3)?;
+    let mut model = DeepRiskModel::new(
+        10, // n_assets
+        3,  // n_factors
+        20, // max_seq_len
+        40, // d_model
+        2,  // n_heads
+        64, // d_ff
+        2   // n_layers
+    )?;
     
     // Generate synthetic data with appropriate size based on BLAS availability
     #[cfg(not(feature = "no-blas"))]

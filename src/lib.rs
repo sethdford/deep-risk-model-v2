@@ -37,7 +37,15 @@
 //! 
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create a model for 64 assets with 5 risk factors
-//! let mut model = DeepRiskModel::new(64, 5)?;
+//! let mut model = DeepRiskModel::new(
+//!     64, // n_assets
+//!     5,  // n_factors
+//!     50, // max_seq_len
+//!     128, // d_model
+//!     4,  // n_heads
+//!     256, // d_ff
+//!     3   // n_layers
+//! )?;
 //! 
 //! // Generate synthetic market data
 //! let features = Array2::<f32>::zeros((100, 64));
@@ -114,6 +122,14 @@ pub mod array_utils {
     pub use crate::utils::*;
 }
 
+// Add our new linalg module
+pub mod linalg;
+
+// Re-export ndarray_linalg as our linalg module for backward compatibility
+pub mod ndarray_linalg {
+    pub use crate::linalg::*;
+}
+
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
@@ -174,43 +190,6 @@ mod tests {
             Ok(())
         })
     }
-}
 
-// Fallback implementation for when BLAS is not available
-#[cfg(not(feature = "blas-enabled"))]
-pub mod ndarray_linalg {
-    // Provide a minimal fallback implementation for when BLAS is not available
-    #[derive(Debug, thiserror::Error)]
-    #[error("BLAS operations are not available in no-blas mode")]
-    pub struct LinalgError;
-    
-    // Provide a minimal implementation of the traits and functions needed
-    pub mod error {
-        pub use super::LinalgError;
-        pub type Result<T> = std::result::Result<T, LinalgError>;
-    }
-    
-    // Minimal implementation of the linalg module
-    pub mod impl_linalg {
-        use super::error::Result;
-        use ndarray::{ArrayBase, Data, Dimension};
-        
-        // Stub for matrix multiplication
-        pub fn mat_mul_impl<A, S1, S2, D1, D2>(
-            _alpha: A,
-            _a: &ArrayBase<S1, D1>,
-            _b: &ArrayBase<S2, D2>,
-            _beta: A,
-            _c: &mut ArrayBase<S1, D1>,
-        ) -> Result<()>
-        where
-            A: Copy,
-            S1: Data<Elem = A>,
-            S2: Data<Elem = A>,
-            D1: Dimension,
-            D2: Dimension,
-        {
-            Err(super::LinalgError)
-        }
-    }
+    pub mod factor_analysis_tests;
 }

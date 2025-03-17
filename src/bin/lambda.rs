@@ -1,7 +1,7 @@
 use deep_risk_model::prelude::{
     MarketData,
     RiskModel,
-    TransformerRiskModel,
+    DeepRiskModel,
 };
 use lambda_http::{run, service_fn, Body, Error, Request, Response};
 use serde_json::json;
@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use ndarray::Array2;
 
-type SharedModel = Arc<Mutex<TransformerRiskModel>>;
+type SharedModel = Arc<Mutex<DeepRiskModel>>;
 
 #[cfg(not(feature = "no-blas"))]
 async fn function_handler(event: Request, model: SharedModel) -> Result<Response<Body>, Error> {
@@ -25,25 +25,47 @@ async fn function_handler(event: Request, model: SharedModel) -> Result<Response
     
     // Convert to ndarray
     let n_samples = features.len();
-    let n_assets = features[0].as_array()
-        .ok_or_else(|| Error::from("Invalid features format"))?
-        .len();
+    let n_assets = if n_samples > 0 {
+        features[0].as_array()
+            .ok_or_else(|| Error::from("Invalid features format"))?
+            .len()
+    } else {
+        0
+    };
     
-    let mut features_array = Array2::zeros((n_samples, n_assets));
+    let mut features_array = Array2::zeros((n_samples, n_assets * 2)); // Double the features for static and temporal
     let mut returns_array = Array2::zeros((n_samples, n_assets));
     
     for i in 0..n_samples {
-        let row = features[i].as_array()
+        let feature_row = features[i].as_array()
             .ok_or_else(|| Error::from("Invalid features format"))?;
-        for j in 0..n_assets {
-            features_array[[i, j]] = row[j].as_f64()
+        
+        // Ensure feature row has the right length
+        if feature_row.len() != n_assets * 2 {
+            return Err(Error::from(format!(
+                "Feature row {} has incorrect length: expected {}, got {}", 
+                i, n_assets * 2, feature_row.len()
+            )));
+        }
+        
+        for j in 0..n_assets * 2 {
+            features_array[[i, j]] = feature_row[j].as_f64()
                 .ok_or_else(|| Error::from("Invalid feature value"))? as f32;
         }
         
-        let row = returns[i].as_array()
+        let return_row = returns[i].as_array()
             .ok_or_else(|| Error::from("Invalid returns format"))?;
+        
+        // Ensure return row has the right length
+        if return_row.len() != n_assets {
+            return Err(Error::from(format!(
+                "Return row {} has incorrect length: expected {}, got {}", 
+                i, n_assets, return_row.len()
+            )));
+        }
+        
         for j in 0..n_assets {
-            returns_array[[i, j]] = row[j].as_f64()
+            returns_array[[i, j]] = return_row[j].as_f64()
                 .ok_or_else(|| Error::from("Invalid return value"))? as f32;
         }
     }
@@ -84,23 +106,39 @@ async fn function_handler(event: Request, _model: SharedModel) -> Result<Respons
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // Initialize model with appropriate parameters for TransformerRiskModel
-    let d_model = 64;
-    let n_heads = 8;
-    let d_ff = 256;
-    let n_layers = 3;
+    // Initialize model with appropriate parameters
+    let n_assets = 100;
+    let n_factors = 10;
     
     #[cfg(not(feature = "no-blas"))]
-    let model = TransformerRiskModel::new(d_model, n_heads, d_ff, n_layers)?;
+    let mut model = DeepRiskModel::new(
+        n_assets,
+        n_factors,
+        20,   // max_seq_len
+        200,  // d_model
+        4,    // n_heads
+        128,  // d_ff
+        2,    // n_layers
+    )?;
+    
+    #[cfg(not(feature = "no-blas"))]
+    // Set lower thresholds for factor selection in demo mode
+    model.set_factor_selection_thresholds(0.01, 10.0, 0.01)?;
     
     #[cfg(feature = "no-blas")]
     let model = {
         // In no-blas mode, use a smaller configuration to avoid matrix inversion issues
-        let small_d_model = 6;
-        let small_n_heads = 1;
-        let small_d_ff = 8;
-        let small_n_layers = 1;
-        TransformerRiskModel::new(small_d_model, small_n_heads, small_d_ff, small_n_layers)?
+        let small_n_assets = 10;
+        let small_n_factors = 2;
+        DeepRiskModel::new(
+            small_n_assets,
+            small_n_factors,
+            10,   // max_seq_len
+            40,   // d_model
+            2,    // n_heads
+            64,   // d_ff
+            1,    // n_layers
+        )?
     };
     
     let shared_model = Arc::new(Mutex::new(model));

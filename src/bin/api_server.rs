@@ -53,19 +53,39 @@ async fn health_check() -> &'static str {
 
 #[cfg(not(feature = "no-blas"))]
 async fn generate_risk_factors(
-    State(model): State<SharedState>,
+    State(model_state): State<SharedState>,
     Json(request): Json<MarketDataRequest>,
 ) -> Result<Json<RiskFactorsResponse>, String> {
     // Convert request data to ndarray
     let n_samples = request.features.len();
-    let n_assets = request.features[0].len();
+    if n_samples == 0 {
+        return Err("Empty features array".to_string());
+    }
     
-    let mut features = Array2::zeros((n_samples, n_assets));
+    let feature_cols = request.features[0].len();
+    let n_assets = request.returns[0].len();
+    
+    // Validate that feature dimensions are correct (should be 2 * n_assets)
+    if feature_cols != 2 * n_assets {
+        return Err(format!("Feature columns ({}) should be twice the number of assets ({})", feature_cols, n_assets));
+    }
+    
+    let mut features = Array2::zeros((n_samples, feature_cols));
     let mut returns = Array2::zeros((n_samples, n_assets));
     
     for i in 0..n_samples {
-        for j in 0..n_assets {
+        if request.features[i].len() != feature_cols {
+            return Err(format!("Inconsistent feature dimensions at row {}", i));
+        }
+        if request.returns[i].len() != n_assets {
+            return Err(format!("Inconsistent return dimensions at row {}", i));
+        }
+        
+        for j in 0..feature_cols {
             features[[i, j]] = request.features[i][j];
+        }
+        
+        for j in 0..n_assets {
             returns[[i, j]] = request.returns[i][j];
         }
     }
@@ -73,9 +93,31 @@ async fn generate_risk_factors(
     // Create market data
     let market_data = MarketData::new(returns, features);
     
+    // Check if we need to create a new model with the correct dimensions
+    let mut model_guard = model_state.lock().await;
+    if model_guard.n_assets() != n_assets {
+        info!("Creating new model with {} assets (previous: {})", n_assets, model_guard.n_assets());
+        // Create a new model with the correct number of assets
+        // Use 10% of assets as factors, with a minimum of 2
+        let n_factors = std::cmp::max(2, (n_assets as f32 * 0.1) as usize);
+        *model_guard = DeepRiskModel::new(
+            n_assets, 
+            n_factors,
+            50,  // max_seq_len
+            64,  // d_model
+            4,   // n_heads
+            256, // d_ff
+            3    // n_layers
+        )
+            .map_err(|e| e.to_string())?;
+        
+        // Set lower thresholds for factor selection in demo mode
+        model_guard.set_factor_selection_thresholds(0.01, 10.0, 0.01)
+            .map_err(|e| e.to_string())?;
+    }
+    
     // Generate risk factors
-    let model = model.lock().await;
-    let risk_factors = model.generate_risk_factors(&market_data)
+    let risk_factors = model_guard.generate_risk_factors(&market_data)
         .await
         .map_err(|e| e.to_string())?;
     
@@ -112,15 +154,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
     
-    // Initialize model with appropriate parameters
+    // Initialize model with default parameters
+    // The actual model will be created dynamically based on input data
     #[cfg(not(feature = "no-blas"))]
-    let model = DeepRiskModel::new(100, 10)?;
+    let model = DeepRiskModel::new(
+        5,   // n_assets
+        2,   // n_factors
+        50,  // max_seq_len
+        64,  // d_model
+        4,   // n_heads
+        256, // d_ff
+        3    // n_layers
+    )?;
     
     #[cfg(feature = "no-blas")]
     let model = {
         // In no-blas mode, use a smaller configuration to avoid matrix inversion issues
         info!("Running in no-blas mode with limited functionality");
-        DeepRiskModel::new(10, 2)?
+        DeepRiskModel::new(
+            5,   // n_assets
+            2,   // n_factors
+            20,  // max_seq_len
+            32,  // d_model
+            2,   // n_heads
+            64,  // d_ff
+            2    // n_layers
+        )?
     };
     
     let shared_state = Arc::new(Mutex::new(model));

@@ -1,6 +1,6 @@
 #![recursion_limit = "256"]
 
-use ndarray::{Array1, Array2};
+use ndarray::{Array1, Array2, s};
 use async_trait::async_trait;
 use crate::error::ModelError;
 use crate::types::{MarketData, RiskFactors, RiskModel};
@@ -28,7 +28,15 @@ use crate::factor_analysis::{FactorAnalyzer, FactorQualityMetrics};
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     // Create model with 10 assets and 5 risk factors
-///     let mut model = DeepRiskModel::new(10, 5)?;
+///     let mut model = DeepRiskModel::new(
+///         10, // n_assets
+///         5,  // n_factors
+///         50, // max_seq_len
+///         20, // d_model
+///         2,  // n_heads
+///         64, // d_ff
+///         2   // n_layers
+///     )?;
 ///     
 ///     // Generate sample data
 ///     let returns = Array2::zeros((100, 10));
@@ -53,33 +61,55 @@ use crate::factor_analysis::{FactorAnalyzer, FactorQualityMetrics};
 pub struct DeepRiskModel {
     n_assets: usize,
     n_factors: usize,
+    max_seq_len: usize,
     transformer: TransformerRiskModel,
     factor_analyzer: FactorAnalyzer,
 }
 
 impl DeepRiskModel {
-    /// Create a new deep risk model
-    pub fn new(n_assets: usize, n_factors: usize) -> Result<Self, ModelError> {
-        // Set d_model to match the number of feature columns (n_assets * 2)
-        let d_model = n_assets * 2;
-        
+    /// Creates a new DeepRiskModel with the specified parameters
+    pub fn new(
+        n_assets: usize,
+        n_factors: usize,
+        max_seq_len: usize,
+        d_model: usize,
+        n_heads: usize,
+        d_ff: usize,
+        n_layers: usize,
+    ) -> Result<Self, ModelError> {
+        if n_assets == 0 || n_factors == 0 || max_seq_len == 0 {
+            return Err(ModelError::InvalidInput(
+                "n_assets, n_factors, and max_seq_len must be greater than 0".to_string(),
+            ));
+        }
+
+        if n_factors > n_assets {
+            return Err(ModelError::InvalidInput(
+                "n_factors must be less than or equal to n_assets".to_string(),
+            ));
+        }
+
+        // Use the default FactorAnalyzer with reasonable thresholds for most datasets
+        let factor_analyzer = FactorAnalyzer::default();
+
         let transformer_config = TransformerConfig {
             d_model,
-            max_seq_len: 20, // Reduced from 100 to work with smaller sample sizes
-            n_heads: 4,
-            d_ff: 128,
-            n_layers: 2,
+            n_heads,
+            d_ff,
+            n_layers,
             dropout: 0.1,
-            num_static_features: 10,
-            num_temporal_features: 10,
-            hidden_size: 32,
+            max_seq_len,
+            num_static_features: n_assets,
+            num_temporal_features: n_assets,
+            hidden_size: d_model / 2,
         };
+
         let transformer = TransformerRiskModel::with_config(transformer_config)?;
-        let factor_analyzer = FactorAnalyzer::new(0.5, 5.0, 0.05);
-        
+
         Ok(Self {
             n_assets,
             n_factors,
+            max_seq_len,
             transformer,
             factor_analyzer,
         })
@@ -94,21 +124,46 @@ impl DeepRiskModel {
             ));
         }
         
+        // Store max_seq_len before moving config
+        let max_seq_len = config.max_seq_len;
+        
         let transformer = TransformerRiskModel::with_config(config)?;
         let factor_analyzer = FactorAnalyzer::new(0.5, 5.0, 0.05);
         
         Ok(Self {
             n_assets,
             n_factors,
+            max_seq_len,
             transformer,
             factor_analyzer,
         })
     }
 
+    /// Get the number of assets this model is configured for
+    pub fn n_assets(&self) -> usize {
+        self.n_assets
+    }
+
+    /// Set custom thresholds for factor selection
+    /// 
+    /// # Arguments
+    /// 
+    /// * `ic_threshold` - Minimum information coefficient threshold
+    /// * `vif_threshold` - Maximum variance inflation factor threshold
+    /// * `t_stat_threshold` - Minimum t-statistic threshold
+    /// 
+    /// # Returns
+    /// 
+    /// Result indicating success or failure
+    pub fn set_factor_selection_thresholds(&mut self, ic_threshold: f32, vif_threshold: f32, t_stat_threshold: f32) -> Result<(), ModelError> {
+        self.factor_analyzer = FactorAnalyzer::new(ic_threshold, vif_threshold, t_stat_threshold);
+        Ok(())
+    }
+
     /// Get factor quality metrics
     pub async fn get_factor_metrics(&self, data: &MarketData) -> Result<Vec<FactorQualityMetrics>, ModelError> {
         let risk_factors = self.transformer.generate_risk_factors(data).await?;
-        self.factor_analyzer.calculate_metrics(
+        self.factor_analyzer.calculate_factor_metrics(
             risk_factors.factors(),
             data.returns(),
         )
@@ -121,7 +176,8 @@ impl RiskModel for DeepRiskModel {
         // Validate input dimensions
         if data.returns().shape()[1] != self.n_assets {
             return Err(ModelError::DimensionMismatch(
-                "Returns must have n_assets columns".into()
+                format!("Returns must have {} columns (n_assets), but got {}", 
+                    self.n_assets, data.returns().shape()[1]).into()
             ));
         }
         
@@ -131,7 +187,8 @@ impl RiskModel for DeepRiskModel {
     async fn generate_risk_factors(&self, data: &MarketData) -> Result<RiskFactors, ModelError> {
         if data.returns().shape()[1] != self.n_assets {
             return Err(ModelError::DimensionMismatch(
-                "Returns must have n_assets columns".into()
+                format!("Returns must have {} columns (n_assets), but got {}", 
+                    self.n_assets, data.returns().shape()[1]).into()
             ));
         }
         
@@ -143,7 +200,19 @@ impl RiskModel for DeepRiskModel {
         self.factor_analyzer.orthogonalize_factors(&mut factors)?;
         
         // Calculate factor metrics
-        let metrics = self.factor_analyzer.calculate_metrics(&factors, data.returns())?;
+        let factor_samples = factors.shape()[0];
+        let returns_samples = data.returns().shape()[0];
+        
+        // If the number of samples doesn't match, we need to slice the returns
+        let returns = if factor_samples != returns_samples {
+            // Calculate the offset needed to align the returns with the factors
+            let offset = returns_samples - factor_samples;
+            data.returns().slice(s![offset.., ..]).to_owned()
+        } else {
+            data.returns().to_owned()
+        };
+        
+        let metrics = self.factor_analyzer.calculate_factor_metrics(&factors, &returns)?;
         
         // Select optimal factors
         let selected_factors = self.factor_analyzer.select_optimal_factors(&factors, &metrics)?;
@@ -184,9 +253,9 @@ impl RiskModel for DeepRiskModel {
         
         // Estimate factor loadings using regression
         for i in 0..self.n_assets {
-            let returns_i = data.returns().slice(ndarray::s![.., i]);
+            let returns_i = data.returns().slice(s![.., i]);
             for j in 0..n_factors {
-                let factor_j = factors.slice(ndarray::s![.., j]);
+                let factor_j = factors.slice(s![.., j]);
                 let mut sum_xy = 0.0;
                 let mut sum_xx = 0.0;
                 for k in 0..n_samples {
