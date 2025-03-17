@@ -464,3 +464,187 @@ let model = DeepRiskModel::with_transformer_config(64, 5, config)?;
 ```
 
 The same configuration options are available for `GPUDeepRiskModel`.
+
+## Linear Algebra Support
+
+This project provides cross-platform linear algebra support with two options:
+
+### 1. Pure Rust Implementation (Default)
+
+By default, the project uses a pure Rust implementation of linear algebra operations via the `linfa-linalg` crate. This approach:
+
+- Requires no external dependencies
+- Works on all platforms without configuration
+- Is slightly slower for large matrices but perfectly adequate for most use cases
+
+To use the pure Rust implementation (default):
+
+```bash
+cargo build
+# or explicitly
+cargo build --features pure-rust
+```
+
+### 2. BLAS-Accelerated Implementation
+
+For performance-critical applications with large matrices, you can enable BLAS acceleration:
+
+#### On macOS:
+
+```bash
+# Use Apple's Accelerate framework (recommended on macOS)
+cargo build --no-default-features --features accelerate
+```
+
+#### On Linux:
+
+```bash
+# Use OpenBLAS (common on Linux)
+cargo build --no-default-features --features openblas
+```
+
+#### On Windows:
+
+```bash
+# Use Intel MKL
+cargo build --no-default-features --features intel-mkl
+```
+
+### Example Usage
+
+The linear algebra module provides a unified interface regardless of which backend is used:
+
+```rust
+use deep_risk_model::linalg;
+use ndarray::array;
+
+// Create matrices
+let a = array![[1.0, 2.0], [3.0, 4.0]];
+let b = array![[5.0, 6.0], [7.0, 8.0]];
+
+// Matrix multiplication
+let c = linalg::matmul(&a, &b);
+
+// SVD decomposition
+let (u, s, v) = linalg::svd(&a).unwrap();
+
+// Solve linear system
+let x = array![1.0, 2.0];
+let b = linalg::matvec(&a, &x);
+let solution = linalg::solve(&a, &b).unwrap();
+```
+
+See the `examples/linalg_example.rs` file for a complete demonstration.
+
+## Deployable as an AWS Lambda Function
+
+This project can be deployed as an AWS Lambda function.
+
+### Prerequisites
+
+- Rust (stable)
+- Docker (for SAM local development and deployment)
+- AWS CLI (configured with appropriate credentials)
+- SAM CLI
+
+### Local Development
+
+#### Building the Project
+
+```bash
+make build
+```
+
+#### Running Tests
+
+```bash
+make test
+```
+
+#### Generating Test Payload
+
+```bash
+make generate-payload
+```
+
+#### Running Locally (without Lambda runtime)
+
+```bash
+make local-invoke
+```
+
+### Deployment with SAM
+
+#### Building with SAM
+
+```bash
+make sam-build
+```
+
+#### Deploying to AWS
+
+```bash
+make sam-deploy
+```
+
+#### Testing Locally with SAM
+
+```bash
+make sam-local-invoke
+```
+
+#### Starting a Local API
+
+```bash
+make sam-local-api
+```
+
+### CI/CD with GitHub Actions
+
+This project includes a GitHub Actions workflow that automatically deploys the Lambda function to AWS when changes are pushed to the main branch.
+
+To set up CI/CD:
+
+1. Add the following secrets to your GitHub repository:
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+   - `AWS_REGION`
+
+2. Push changes to the main branch to trigger a deployment.
+
+### API Usage
+
+#### Request Format
+
+```json
+{
+  "features": [
+    [feature1_1, feature1_2, ..., feature1_n, feature1_n+1, ..., feature1_2n],
+    [feature2_1, feature2_2, ..., feature2_n, feature2_n+1, ..., feature2_2n],
+    ...
+  ],
+  "returns": [
+    [return1_1, return1_2, ..., return1_n],
+    [return2_1, return2_2, ..., return2_n],
+    ...
+  ]
+}
+```
+
+Where:
+- `features` is a 2D array of feature values (each row has 2n values)
+- `returns` is a 2D array of return values (each row has n values)
+- n is the number of assets
+
+#### Response Format
+
+```json
+{
+  "factors": [[factor_values]],
+  "covariance": [[covariance_matrix]]
+}
+```
+
+Where:
+- `factors` is a 2D array of risk factor values
+- `covariance` is a 2D array representing the covariance matrix

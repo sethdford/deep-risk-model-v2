@@ -13,12 +13,13 @@ samconfig.toml
 *.swp
 *.swo
 
-# macOS files
-.DS_Store
-
 # Environment variables
 .env
-.env.*
+.env.local
+
+# OS specific files
+.DS_Store
+Thumbs.db
 
 # Temporary files
 *.tmp

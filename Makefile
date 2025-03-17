@@ -1,22 +1,37 @@
-.PHONY: build-DeepRiskModelFunction build clean
+.PHONY: build test clean deploy local-invoke
 
-build-DeepRiskModelFunction:
-	@echo "Building DeepRiskModelFunction..."
-	@if [ "$(shell uname)" = "Darwin" ]; then \
-		echo "Building for macOS with Accelerate..."; \
-		cargo build --release --features accelerate --no-default-features --bin bootstrap; \
-	else \
-		echo "Building for Linux with OpenBLAS..."; \
-		cargo build --release --features openblas --no-default-features --bin bootstrap; \
-	fi
-	@mkdir -p $(ARTIFACTS_DIR)
-	@cp target/release/bootstrap $(ARTIFACTS_DIR)
-	@echo "Build completed successfully!"
+# Build the project
+build:
+	cargo build --release
 
-build: build-DeepRiskModelFunction
+# Run tests
+test:
+	cargo test
 
+# Clean build artifacts
 clean:
-	@echo "Cleaning build artifacts..."
-	@cargo clean
-	@rm -rf .aws-sam
-	@echo "Clean completed successfully!" 
+	cargo clean
+
+# Build with SAM
+sam-build:
+	sam build --use-container
+
+# Deploy with SAM
+sam-deploy: sam-build
+	sam deploy --stack-name deep-risk-model --no-confirm-changeset --no-fail-on-empty-changeset
+
+# Invoke the Lambda function locally
+local-invoke: build
+	cargo run --bin lambda_local < lambda_test_payload.json
+
+# Generate test payload
+generate-payload:
+	cargo run --bin test_lambda_local
+
+# Start local API
+sam-local-api: sam-build
+	sam local start-api
+
+# Invoke the Lambda function locally with SAM
+sam-local-invoke: sam-build
+	sam local invoke DeepRiskModelFunction -e events/test_event_lambda.json 
