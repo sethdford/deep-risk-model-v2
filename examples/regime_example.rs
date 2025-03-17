@@ -14,9 +14,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("=== Market Regime Detection and Backtesting Example ===");
     
     // Check if BLAS is available
-    if !cfg!(feature = "blas") {
-        println!("This example requires the 'blas' feature to be enabled.");
-        println!("Try running with: cargo run --example regime_example --features blas");
+    if !cfg!(feature = "blas-enabled") {
+        println!("This example requires the 'blas-enabled' feature to be enabled.");
+        println!("Try running with: cargo run --example regime_example --features blas-enabled");
         return Ok(());
     }
     
@@ -30,16 +30,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let n_heads = 8;
     let d_ff = 256;
     let n_layers = 3;
-    let window_size = 20;
+    let window_size = 10;  // Reduced from 20 to be smaller than train_window
     
-    let mut model = RegimeAwareRiskModel::new(
-        d_model, n_heads, d_ff, n_layers, window_size
+    // Create a custom config with smaller max_seq_len
+    let mut config = deep_risk_model::transformer::TransformerConfig::new(
+        64, // n_assets
+        d_model,
+        n_heads,
+        d_ff,
+        n_layers
+    );
+    config.max_seq_len = 10; // Use a smaller max_seq_len for the example
+    
+    let mut model = RegimeAwareRiskModel::with_transformer_config(
+        d_model, n_heads, d_ff, n_layers, window_size, config
     )?;
     
     // Create backtest
     println!("Setting up backtest...");
-    let train_window = 50;
-    let test_window = 150;
+    let train_window = 20;  // Reduced from 50 to be smaller than the data segments
+    let test_window = 50;   // Reduced from 150 to be smaller than the data segments
     let rebalance_freq = 10;
     let risk_aversion = 1.0;
     
@@ -75,17 +85,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 /// Generate synthetic market data with regime changes
 fn generate_synthetic_data() -> Result<(MarketData, Vec<(usize, RegimeType)>), Box<dyn Error>> {
-    let n_samples = 500;
+    let n_samples = 1000;  // Increased from 500 to ensure enough data
     let n_assets = 64;  // Updated to match d_model
     let n_features = 64;  // Updated to match d_model
     
     // Define regime changes
     let regime_changes = vec![
         (0, RegimeType::Normal),
-        (100, RegimeType::LowVolatility),
-        (200, RegimeType::Normal),
-        (300, RegimeType::HighVolatility),
-        (400, RegimeType::Crisis),
+        (200, RegimeType::LowVolatility),
+        (400, RegimeType::Normal),
+        (600, RegimeType::HighVolatility),
+        (800, RegimeType::Crisis),
     ];
     
     // Initialize returns and features

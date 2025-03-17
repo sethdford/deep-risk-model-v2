@@ -61,9 +61,20 @@ pub struct CovarianceResponse {
 }
 
 pub async fn run_server(_config: ModelConfig) -> Result<(), ModelError> {
-    // Create a model with appropriate dimensions
-    // For this example, we'll use 100 assets and 10 factors
-    let model = DeepRiskModel::new(100, 10)?;
+    // Create a new model with the specified configuration
+    let mut model = DeepRiskModel::new(
+        100,  // n_assets
+        10,   // n_factors
+        20,   // max_seq_len
+        200,  // d_model
+        4,    // n_heads
+        128,  // d_ff
+        2,    // n_layers
+    )?;
+    
+    // Use lenient thresholds for factor selection
+    model.set_factor_selection_thresholds(0.01, 10.0, 0.01)?;
+    
     let state = AppState {
         model: Arc::new(Mutex::new(model)),
     };

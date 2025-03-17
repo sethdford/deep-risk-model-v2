@@ -1,2 +1,10 @@
 [target.'cfg(target_os = "macos")']
 rustflags = ["-L", "framework=/System/Library/Frameworks"]
+
+# Commented out cross-compilation settings
+# [target.x86_64-unknown-linux-gnu]
+# linker = "x86_64-unknown-linux-gnu-gcc"
+# rustflags = ["-C", "target-feature=+crt-static"]
+
+# [build]
+# target = "x86_64-unknown-linux-gnu"

@@ -201,7 +201,7 @@ impl GPUDeepRiskModel {
     /// Get factor quality metrics with GPU acceleration
     pub async fn get_factor_metrics(&self, data: &MarketData) -> Result<Vec<FactorQualityMetrics>, ModelError> {
         let risk_factors = self.transformer.generate_risk_factors(data).await?;
-        self.factor_analyzer.calculate_metrics(
+        self.factor_analyzer.calculate_factor_metrics(
             risk_factors.factors(),
             data.returns(),
         )
@@ -243,7 +243,7 @@ impl RiskModel for GPUDeepRiskModel {
         self.factor_analyzer.orthogonalize_factors(&mut factors)?;
         
         // Calculate factor metrics
-        let metrics = self.factor_analyzer.calculate_metrics(&factors, data.returns())?;
+        let metrics = self.factor_analyzer.calculate_factor_metrics(&factors, data.returns())?;
         
         // Select optimal factors
         let selected_factors = self.factor_analyzer.select_optimal_factors(&factors, &metrics)?;

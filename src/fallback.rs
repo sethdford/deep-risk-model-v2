@@ -49,12 +49,45 @@ pub fn inv(a: &Array2<f32>) -> Result<Array2<f32>, ModelError> {
     
     let n = shape[0];
     
-    // For matrices larger than 3x3, we need BLAS
-    if n > 3 {
-        return Err(ModelError::UnsupportedOperation(
-            "Matrix inversion for matrices larger than 3x3 requires BLAS. Please enable the BLAS feature.".into()
-        ));
+    // When BLAS is enabled, use ndarray_linalg for matrix inversion
+    #[cfg(feature = "blas-enabled")]
+    {
+        use ndarray_linalg::Inverse;
+        
+        // For very small matrices, the pure Rust implementation might be faster
+        if n <= 3 {
+            // Use the pure Rust implementation for small matrices
+            return fallback_inv(a);
+        }
+        
+        // Use BLAS-accelerated matrix inversion for larger matrices
+        match a.inv() {
+            Ok(inv_a) => return Ok(inv_a),
+            Err(_) => return Err(ModelError::NumericalError(
+                "Matrix inversion failed".into()
+            )),
+        }
     }
+    
+    // When BLAS is not enabled, use the pure Rust implementation
+    #[cfg(not(feature = "blas-enabled"))]
+    {
+        // For matrices larger than 3x3, we need BLAS
+        if n > 3 {
+            return Err(ModelError::UnsupportedOperation(
+                "Matrix inversion for matrices larger than 3x3 requires BLAS. Please enable the BLAS feature.".into()
+            ));
+        }
+        
+        return fallback_inv(a);
+    }
+}
+
+/// Pure Rust implementation of matrix inversion for small matrices (up to 3x3)
+#[inline]
+fn fallback_inv(a: &Array2<f32>) -> Result<Array2<f32>, ModelError> {
+    let shape = a.shape();
+    let n = shape[0];
     
     match n {
         1 => {
@@ -103,10 +136,11 @@ pub fn inv(a: &Array2<f32>) -> Result<Array2<f32>, ModelError> {
             let a32 = a[[2, 1]];
             let a33 = a[[2, 2]];
             
+            // Calculate determinant
             let det = a11 * (a22 * a33 - a23 * a32)
                     - a12 * (a21 * a33 - a23 * a31)
                     + a13 * (a21 * a32 - a22 * a31);
-                    
+            
             if det.abs() < 1e-10 {
                 return Err(ModelError::NumericalError(
                     "Matrix is singular".into()
@@ -115,21 +149,24 @@ pub fn inv(a: &Array2<f32>) -> Result<Array2<f32>, ModelError> {
             
             let mut result = Array2::zeros((3, 3));
             
+            // Calculate cofactors and adjugate
             result[[0, 0]] = (a22 * a33 - a23 * a32) / det;
             result[[0, 1]] = (a13 * a32 - a12 * a33) / det;
             result[[0, 2]] = (a12 * a23 - a13 * a22) / det;
-            
             result[[1, 0]] = (a23 * a31 - a21 * a33) / det;
             result[[1, 1]] = (a11 * a33 - a13 * a31) / det;
             result[[1, 2]] = (a13 * a21 - a11 * a23) / det;
-            
             result[[2, 0]] = (a21 * a32 - a22 * a31) / det;
             result[[2, 1]] = (a12 * a31 - a11 * a32) / det;
             result[[2, 2]] = (a11 * a22 - a12 * a21) / det;
             
             Ok(result)
         },
-        _ => unreachable!(),
+        _ => {
+            Err(ModelError::UnsupportedOperation(
+                "Matrix inversion for matrices larger than 3x3 requires BLAS. Please enable the BLAS feature.".into()
+            ))
+        }
     }
 }
 

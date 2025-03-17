@@ -1,5 +1,5 @@
-use crate::factor_analysis::{FactorAnalyzer, FactorQualityMetrics};
-use crate::error::ModelError;
+use deep_risk_model::factor_analysis::{FactorAnalyzer, FactorQualityMetrics};
+use deep_risk_model::error::ModelError;
 use ndarray::{Array2, s};
 use ndarray_rand::RandomExt;
 use ndarray_rand::rand_distr::{Uniform, Normal};
