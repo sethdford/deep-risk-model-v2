@@ -69,7 +69,7 @@ jobs:
 
       - name: Install SAM CLI
         run: |
-          pip install aws-sam-cli
+          pip install aws-sam-cli==1.95.0
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -78,9 +78,16 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Debug SAM template
+        run: |
+          echo "Validating SAM template..."
+          sam validate --debug
+          echo "SAM CLI version:"
+          sam --version
+
       - name: Build with SAM
         run: |
-          sam build --use-container
+          sam build --use-container --debug
 
       - name: Deploy with SAM
         run: |
