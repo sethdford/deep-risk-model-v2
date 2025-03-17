@@ -4,11 +4,13 @@ set -e
 echo "Cleaning previous build artifacts..."
 make clean
 
-echo "Building the SAM application..."
-sam build
+echo "Building Lambda function..."
+ARTIFACTS_DIR=./target/lambda make build
 
-echo "Starting the local API Gateway and Lambda..."
-sam local start-api
+echo "Invoking Lambda function locally..."
+cargo lambda invoke --data-file events/test_event.json
+
+echo "Local test completed successfully!"
 
 # The API will be available at http://127.0.0.1:3000/risk-factors
 # You can test it with:

@@ -10,4 +10,4 @@ export AWS_LAMBDA_RUNTIME_API="localhost:8080"
 export _HANDLER="lambda.handler"
 
 # Run the Lambda function with our test payload
-cargo run --bin lambda < lambda_test_payload.json 
+cargo run --bin lambda < events/lambda_test_payload.json 

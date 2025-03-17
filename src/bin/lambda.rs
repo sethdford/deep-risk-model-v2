@@ -107,17 +107,17 @@ async fn function_handler(event: Request, _model: SharedModel) -> Result<Respons
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // Initialize model with appropriate parameters
-    let n_assets = 100;
-    let n_factors = 10;
+    let n_assets = 16;
+    let n_factors = 2;
     
     #[cfg(not(feature = "no-blas"))]
     let mut model = DeepRiskModel::new(
         n_assets,
         n_factors,
         20,   // max_seq_len
-        200,  // d_model
-        4,    // n_heads
-        128,  // d_ff
+        32,   // d_model - match the number of columns in our input (16 * 2)
+        2,    // n_heads
+        64,   // d_ff
         2,    // n_layers
     )?;
     

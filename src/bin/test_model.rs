@@ -8,7 +8,7 @@ use std::error::Error;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // Read the test event from file
-    let mut file = File::open("test_event_direct.json")?;
+    let mut file = File::open("events/test_event_16cols.json")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
     
@@ -34,12 +34,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // For simplicity, we'll use the same data for both
     let data = MarketData::new(data_array.clone(), data_array.clone());
     
-    // Create and use the DeepRiskModel with 16 assets (32 features / 2)
+    // Create and use the DeepRiskModel with 16 assets
     let model = DeepRiskModel::new(
         16, // n_assets
         2,  // n_factors
         20, // max_seq_len
-        32, // d_model
+        16, // d_model - match the number of columns in our input
         2,  // n_heads
         64, // d_ff
         2   // n_layers
