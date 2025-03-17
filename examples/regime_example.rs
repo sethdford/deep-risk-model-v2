@@ -14,10 +14,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("=== Market Regime Detection and Backtesting Example ===");
     
     // Check if BLAS is available
-    #[cfg(feature = "no-blas")]
-    {
-        println!("This example requires BLAS support. Please compile with the 'blas' feature enabled.");
-        println!("Try running with: cargo run --bin regime_example --features blas");
+    if !cfg!(feature = "blas") {
+        println!("This example requires the 'blas' feature to be enabled.");
+        println!("Try running with: cargo run --example regime_example --features blas");
         return Ok(());
     }
     

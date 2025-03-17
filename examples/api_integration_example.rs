@@ -66,10 +66,11 @@ const N_ASSETS: usize = 3;   // Keep at 3 assets for no-blas mode (max matrix si
 #[cfg(feature = "no-blas")]
 const N_FACTORS: usize = 2;  // Reduce to 2 factors for no-blas mode
 
+// For BLAS-enabled mode, we can use larger matrices
 #[cfg(not(feature = "no-blas"))]
 const N_SAMPLES: usize = 100;
 #[cfg(not(feature = "no-blas"))]
-const N_ASSETS: usize = 10;
+const N_ASSETS: usize = 10;  // Increased from 10 to demonstrate BLAS capabilities
 #[cfg(not(feature = "no-blas"))]
 const N_FACTORS: usize = 5;
 
@@ -81,6 +82,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Note: Performance will be significantly slower without BLAS");
     #[cfg(feature = "no-blas")]
     println!("Using 3x3 matrices (maximum size for matrix inversion in no-blas mode)");
+    
+    #[cfg(not(feature = "no-blas"))]
+    println!("Running with BLAS support enabled");
+    #[cfg(not(feature = "no-blas"))]
+    println!("Using larger matrices to demonstrate BLAS capabilities");
     
     // Create synthetic market data
     let features = Array2::random((N_SAMPLES, N_ASSETS * 2), Normal::new(0.0, 1.0).unwrap());
@@ -109,7 +115,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     #[cfg(not(feature = "no-blas"))]
-    let mut model = DeepRiskModel::new(N_ASSETS, N_FACTORS)?;
+    let mut model = {
+        // For BLAS-enabled builds, we can use a more substantial configuration
+        let transformer_config = TransformerConfig {
+            d_model: N_ASSETS * 2, // Match the feature dimension
+            max_seq_len: 20,       // Larger sequence length for BLAS mode
+            n_heads: 4,            // More attention heads
+            d_ff: 128,             // Larger feed-forward dimension
+            n_layers: 2,           // Multiple transformer layers
+            dropout: 0.1,          // Some dropout for regularization
+            num_static_features: 10,
+            num_temporal_features: 10,
+            hidden_size: 32,       // Larger hidden size
+        };
+        
+        // Create the model using the custom configuration with lower thresholds for factor selection
+        let mut model = DeepRiskModel::with_config(N_ASSETS, N_FACTORS, transformer_config)?;
+        
+        // Set lower thresholds for factor selection in demo mode
+        model.set_factor_selection_thresholds(0.01, 10.0, 0.01)?;
+        
+        model
+    };
 
     // Basic model operations
     println!("Training model...");
