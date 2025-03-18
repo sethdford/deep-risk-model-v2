@@ -40,8 +40,9 @@ sam-local-invoke: sam-build
 build-DeepRiskModelFunction:
 	@echo "Building DeepRiskModelFunction using Docker..."
 	mkdir -p $(ARTIFACTS_DIR)
-	docker build -t deep-risk-model:latest .
+	docker build --platform linux/arm64 -t deep-risk-model:latest .
 	docker create --name extract deep-risk-model:latest
 	docker cp extract:/var/runtime/bootstrap $(ARTIFACTS_DIR)/bootstrap
 	docker rm extract
-	chmod +x $(ARTIFACTS_DIR)/bootstrap 
+	chmod +x $(ARTIFACTS_DIR)/bootstrap
+	@echo "Build completed successfully!" 

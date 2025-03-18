@@ -53,6 +53,13 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+        with:
+          platforms: linux/arm64
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: 'arm64'
 
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -71,12 +78,26 @@ jobs:
         run: |
           pip install aws-sam-cli==1.95.0
 
+      - name: Install cross-compilation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+          sudo apt-get install -y libopenblas-dev
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Debug Environment
+        run: |
+          echo "GitHub Runner Environment:"
+          uname -a
+          docker version
+          rustc --version
+          cargo --version
 
       - name: Debug SAM template
         run: |
@@ -89,12 +110,23 @@ jobs:
         run: |
           sam build --use-container --debug
 
+      - name: Check build artifacts
+        run: |
+          ls -la .aws-sam/build/
+          ls -la .aws-sam/build/DeepRiskModelFunction/ || echo "DeepRiskModelFunction directory not found"
+          if [ -f .aws-sam/build/DeepRiskModelFunction/bootstrap ]; then
+            file .aws-sam/build/DeepRiskModelFunction/bootstrap
+            chmod +x .aws-sam/build/DeepRiskModelFunction/bootstrap
+          else
+            echo "Bootstrap file not found!"
+          fi
+
       - name: Deploy with SAM
         run: |
           ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
           
           # Deploy using the appropriate config from samconfig.toml
-          sam deploy --config-env $ENVIRONMENT
+          sam deploy --config-env $ENVIRONMENT --debug
 
       - name: Get API Gateway URL
         run: |
