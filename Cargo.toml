@@ -137,7 +137,7 @@ mockall = "0.11"
 
 [[bin]]
 name = "bootstrap"
-path = "src/bin/bootstrap.rs"
+path = "src/bin/lambda/bootstrap.rs"
 
 [[bin]]
 name = "basic_demo"
@@ -149,11 +149,27 @@ path = "examples/risk_model_demo.rs"
 
 [[bin]]
 name = "api_server"
-path = "src/bin/api_server.rs"
+path = "src/bin/api/server.rs"
 
 [[bin]]
 name = "regime_example"
 path = "examples/regime_example.rs"
+
+[[bin]]
+name = "lambda_handler"
+path = "src/bin/lambda/handler.rs"
+
+[[bin]]
+name = "lambda_local"
+path = "src/bin/lambda/local.rs"
+
+[[bin]]
+name = "generate_lambda_payload"
+path = "src/bin/lambda/generate_payload.rs"
+
+[[bin]]
+name = "run_model_with_test_data"
+path = "src/bin/lambda/run_model_with_test_data.rs"
 
 [profile.release]
 opt-level = 3

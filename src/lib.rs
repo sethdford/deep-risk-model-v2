@@ -63,77 +63,159 @@
 //! # Ok(())
 //! # }
 
-pub mod error;
-pub mod factor_analysis;
-pub mod gru;
-pub mod model;
-pub mod regime;
-pub mod regime_risk_model;
-pub mod transformer;
-pub mod transformer_risk_model;
-pub mod tft_risk_model;
-pub mod types;
-pub mod utils;
-pub mod backtest;
-pub mod stress_testing;
-pub mod fallback;
+// Main module groups
+pub mod core;
+pub mod models;
+pub mod nn;
+pub mod optimization;
+pub mod gpu;
 pub mod api;
 
-// GPU acceleration modules
-pub mod gpu;
-pub mod gpu_transformer_risk_model;
-pub mod gpu_model;
+// Direct access to modules for backward compatibility
+// These will be deprecated in future versions
+pub mod error {
+    pub use crate::core::error::*;
+}
 
-// Model compression and optimization
-pub mod quantization;
-pub mod memory_opt;
+pub mod types {
+    pub use crate::core::types::*;
+}
+
+pub mod utils {
+    pub use crate::core::utils::*;
+}
+
+pub mod linalg {
+    pub use crate::core::linalg::*;
+}
+
+pub mod model {
+    pub use crate::models::model::*;
+}
+
+pub mod factor_analysis {
+    pub use crate::models::factor_analysis::*;
+}
+
+pub mod transformer_risk_model {
+    pub use crate::models::transformer_risk_model::*;
+}
+
+pub mod tft_risk_model {
+    pub use crate::models::tft_risk_model::*;
+}
+
+pub mod regime_risk_model {
+    pub use crate::models::regime_risk_model::*;
+}
+
+pub mod regime {
+    pub use crate::models::regime::*;
+}
+
+pub mod gru {
+    pub use crate::nn::gru::*;
+}
+
+pub mod gat {
+    pub use crate::nn::gat::*;
+}
+
+pub mod transformer {
+    pub use crate::nn::transformer::*;
+}
+
+pub mod backtest {
+    pub use crate::optimization::backtest::*;
+}
+
+pub mod stress_testing {
+    pub use crate::optimization::stress_testing::*;
+}
+
+pub mod fallback {
+    pub use crate::optimization::fallback::*;
+}
+
+pub mod quantization {
+    pub use crate::optimization::quantization::*;
+}
+
+pub mod memory_opt {
+    pub use crate::optimization::memory_opt::*;
+}
+
+// Re-export ndarray_linalg as our linalg module for backward compatibility
+pub mod ndarray_linalg {
+    pub use crate::core::linalg::*;
+}
 
 // Public exports
 pub mod prelude {
-    pub use crate::error::ModelError;
-    pub use crate::model::DeepRiskModel;
-    pub use crate::transformer::TransformerConfig;
-    pub use crate::transformer_risk_model::TransformerRiskModel;
-    pub use crate::tft_risk_model::TFTRiskModel;
-    pub use crate::types::{MarketData, RiskFactors, RiskModel, ModelConfig, MCPConfig};
-    pub use crate::factor_analysis::{FactorAnalyzer, FactorQualityMetrics};
-    pub use crate::regime::{MarketRegimeDetector, RegimeType, RegimeConfig};
-    pub use crate::regime_risk_model::{RegimeAwareRiskModel, RegimeParameters};
-    pub use crate::backtest::{Backtest, BacktestResults, ScenarioGenerator, HistoricalScenarioGenerator, StressScenarioGenerator};
-    pub use crate::stress_testing::{EnhancedStressScenarioGenerator, StressTestExecutor, StressTestResults, 
-                                StressScenario, HistoricalPeriod, ScenarioCombinationSettings, 
-                                StressTestSettings, ReportDetail, ScenarioComparison};
+    // Core types
+    pub use crate::core::{ModelError, MarketData, RiskFactors, RiskModel, ModelConfig, MCPConfig};
+    
+    // Main model implementations
+    pub use crate::models::{
+        DeepRiskModel, 
+        TransformerRiskModel, 
+        TFTRiskModel,
+        FactorAnalyzer, 
+        FactorQualityMetrics,
+        MarketRegimeDetector, 
+        RegimeType, 
+        RegimeConfig,
+        RegimeAwareRiskModel, 
+        RegimeParameters
+    };
+    
+    // Configuration
+    pub use crate::nn::TransformerConfig;
+    
+    // Optimization
+    pub use crate::optimization::{
+        Quantizable, 
+        QuantizationConfig, 
+        QuantizationPrecision, 
+        Quantizer,
+        MemoryConfig, 
+        SparseTensor, 
+        ChunkedProcessor, 
+        GradientCheckpointer, 
+        MemoryMappedArray, 
+        MemoryPool,
+        Backtest, 
+        BacktestResults, 
+        ScenarioGenerator, 
+        HistoricalScenarioGenerator, 
+        StressScenarioGenerator,
+        EnhancedStressScenarioGenerator, 
+        StressTestExecutor, 
+        StressTestResults, 
+        StressScenario, 
+        HistoricalPeriod, 
+        ScenarioCombinationSettings, 
+        StressTestSettings, 
+        ReportDetail, 
+        ScenarioComparison
+    };
+    
+    // API
     pub use crate::api::{AppState, run_server};
     
     // GPU acceleration types
-    pub use crate::gpu::{ComputeDevice, GPUConfig};
-    pub use crate::gpu_transformer_risk_model::GPUTransformerRiskModel;
-    pub use crate::gpu_model::GPUDeepRiskModel;
-    
-    // Quantization types
-    pub use crate::quantization::{Quantizable, QuantizationConfig, QuantizationPrecision, Quantizer};
-    
-    // Memory optimization types
-    pub use crate::memory_opt::{MemoryConfig, SparseTensor, ChunkedProcessor, GradientCheckpointer, MemoryMappedArray, MemoryPool};
+    #[cfg(feature = "gpu")]
+    pub use crate::gpu::{ComputeDevice, GPUConfig, GPUTransformerRiskModel, GPUDeepRiskModel};
 }
 
 // Re-export utilities
 pub mod array_utils {
-    pub use crate::utils::*;
-}
-
-// Add our new linalg module
-pub mod linalg;
-
-// Re-export ndarray_linalg as our linalg module for backward compatibility
-pub mod ndarray_linalg {
-    pub use crate::linalg::*;
+    pub use crate::core::utils::*;
 }
 
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use crate::transformer::TransformerConfig;
     use ndarray::Array;
 
     #[test]
