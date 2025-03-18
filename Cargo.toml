@@ -140,20 +140,8 @@ name = "bootstrap"
 path = "src/bin/lambda/bootstrap.rs"
 
 [[bin]]
-name = "basic_demo"
-path = "examples/basic_demo.rs"
-
-[[bin]]
-name = "risk_model_demo"
-path = "examples/risk_model_demo.rs"
-
-[[bin]]
 name = "api_server"
 path = "src/bin/api/server.rs"
-
-[[bin]]
-name = "regime_example"
-path = "examples/regime_example.rs"
 
 [[bin]]
 name = "lambda_handler"
@@ -193,6 +181,18 @@ harness = false
 [[bench]]
 name = "model_benchmarks"
 harness = false
+
+[[example]]
+name = "basic_demo"
+path = "examples/basic_demo.rs"
+
+[[example]]
+name = "risk_model_demo"
+path = "examples/risk_model_demo.rs"
+
+[[example]]
+name = "regime_example"
+path = "examples/regime_example.rs"
 
 [[example]]
 name = "quantization_example"
