@@ -33,7 +33,6 @@ Globals:
   Function:
     Timeout: !FindInMap [EnvironmentConfig, !Ref EnvironmentType, Timeout]
     MemorySize: !FindInMap [EnvironmentConfig, !Ref EnvironmentType, MemorySize]
-    Architectures: [arm64]
 
 Resources:
   DeepRiskModelFunction:
@@ -44,6 +43,8 @@ Resources:
       CodeUri: .
       Handler: bootstrap
       Runtime: provided.al2
+      Architectures:
+        - x86_64
       Events:
         ApiEvent:
           Type: Api
