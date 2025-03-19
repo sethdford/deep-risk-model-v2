@@ -108,7 +108,7 @@ jobs:
 
       - name: Build with SAM
         run: |
-          sam build --use-container --debug
+          sam build --use-container --architectures arm64
 
       - name: Check build artifacts
         run: |
