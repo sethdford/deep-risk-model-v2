@@ -41,6 +41,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
+      ImageUri: lambda-rust-function:latest
       ImageConfig:
         Command: ["lambda.handler"]
       Events:
