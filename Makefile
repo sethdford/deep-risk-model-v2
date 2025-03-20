@@ -43,5 +43,4 @@ build-DeepRiskModelFunction:
 	mkdir -p $(ARTIFACTS_DIR)
 	cp -r . $(ARTIFACTS_DIR)
 	cd $(ARTIFACTS_DIR) && \
-	export SAM_CLI_ARCHITECTURE=arm64 && \
-	cargo lambda build --release --arm64 --output-format binary 
+	./build.sh 
