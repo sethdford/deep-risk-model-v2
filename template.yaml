@@ -43,7 +43,8 @@ Resources:
       CodeUri: .
       Handler: bootstrap
       Runtime: provided.al2
-      Architectures: arm64
+      Architectures: 
+        - arm64
       Events:
         ApiEvent:
           Type: Api
