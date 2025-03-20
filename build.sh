@@ -8,15 +8,6 @@ install_rust() {
         source "$HOME/.cargo/env"
     fi
 
-    # Install cargo-lambda
-    echo "Installing cargo-lambda..."
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        brew tap cargo-lambda/cargo-lambda
-        brew install cargo-lambda
-    else
-        curl -sSf https://get.cargo-lambda.dev/latest/cargo-lambda-installer.sh | bash
-    fi
-
     # Add required target
     echo "Adding required Rust target..."
     rustup target add aarch64-unknown-linux-gnu
@@ -28,11 +19,13 @@ install_dependencies() {
         # macOS dependencies
         echo "Installing macOS dependencies..."
         brew install openssl@3 openblas
+        brew install gcc-aarch64-linux-gnu
     else
         # Linux dependencies
         echo "Installing Linux dependencies..."
         sudo apt-get update
         sudo apt-get install -y build-essential pkg-config libssl-dev libopenblas-dev
+        sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
     fi
 }
 
@@ -42,6 +35,12 @@ echo "Starting build process..."
 # Install Rust and dependencies
 install_rust
 install_dependencies
+
+# Set up cross-compilation environment
+export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
+export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 
 # Check for OpenBLAS support
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -62,12 +61,12 @@ else
     fi
 fi
 
-# Build the project using cargo-lambda
+# Build the project
 echo "Building project..."
-cargo lambda build --release --arm64 --bin lambda_handler --output-format binary
+cargo build --release --bin bootstrap --target aarch64-unknown-linux-gnu
 
 # Copy the binary to the artifacts directory
 echo "Copying binary to artifacts directory..."
 mkdir -p artifacts
-cp target/lambda/lambda_handler/bootstrap artifacts/
+cp target/aarch64-unknown-linux-gnu/release/bootstrap artifacts/
 chmod +x artifacts/bootstrap 
