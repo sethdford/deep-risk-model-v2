@@ -108,7 +108,8 @@ jobs:
 
       - name: Build with SAM
         run: |
-          sam build --use-container --architectures arm64
+          export SAM_CLI_ARCHITECTURE=arm64
+          sam build --use-container --debug
 
       - name: Check build artifacts
         run: |

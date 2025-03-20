@@ -2,7 +2,7 @@
 
 # Build the project
 build:
-	cargo build --release
+	cargo build --release --bin bootstrap
 
 # Run tests
 test:
@@ -11,6 +11,8 @@ test:
 # Clean build artifacts
 clean:
 	cargo clean
+	rm -rf ./target
+	rm -rf ./.aws-sam
 
 # Build with SAM
 sam-build:
@@ -22,7 +24,7 @@ sam-deploy: sam-build
 
 # Invoke the Lambda function locally
 local-invoke: build
-	cargo run --bin run_model_with_test_data < events/test_event_direct.json
+	cargo run --release --bin bootstrap < events/event.json
 
 # Generate test payload
 generate-payload:
@@ -38,11 +40,8 @@ sam-local-invoke: sam-build
 
 # Build target for SAM
 build-DeepRiskModelFunction:
-	@echo "Building DeepRiskModelFunction using Docker..."
 	mkdir -p $(ARTIFACTS_DIR)
-	docker build --platform linux/arm64 -t deep-risk-model:latest .
-	docker create --name extract deep-risk-model:latest
-	docker cp extract:/var/runtime/bootstrap $(ARTIFACTS_DIR)/bootstrap
-	docker rm extract
-	chmod +x $(ARTIFACTS_DIR)/bootstrap
-	@echo "Build completed successfully!" 
+	cp -r . $(ARTIFACTS_DIR)
+	cd $(ARTIFACTS_DIR) && \
+	export SAM_CLI_ARCHITECTURE=arm64 && \
+	cargo lambda build --release --arm64 --output-format binary 
