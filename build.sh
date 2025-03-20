@@ -8,9 +8,15 @@ install_rust() {
         source "$HOME/.cargo/env"
     fi
 
-    # Add required targets
+    # Force reinstall the target
     echo "Adding required Rust targets..."
+    rustup target remove aarch64-unknown-linux-gnu || true
     rustup target add aarch64-unknown-linux-gnu
+    
+    # Set up environment variables for cross-compilation
+    export RUSTFLAGS="-C target-feature=+crt-static"
+    export OPENSSL_DIR=$(brew --prefix openssl@3)
+    export OPENSSL_LIB_DIR=$(brew --prefix openssl@3)/lib
 }
 
 # Function to install dependencies
@@ -21,7 +27,7 @@ install_dependencies() {
         brew install openssl@3 openblas
         brew tap filosottile/musl-cross
         brew install musl-cross
-        brew tap sergiobenitez/osxct
+        brew tap messense/macos-cross-toolchains
         brew install aarch64-unknown-linux-gnu
     else
         # Linux dependencies
