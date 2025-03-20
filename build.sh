@@ -19,7 +19,6 @@ install_dependencies() {
         # macOS dependencies
         echo "Installing macOS dependencies..."
         brew install openssl@3 openblas
-        brew install gcc-aarch64-linux-gnu
     else
         # Linux dependencies
         echo "Installing Linux dependencies..."
@@ -35,12 +34,6 @@ echo "Starting build process..."
 # Install Rust and dependencies
 install_rust
 install_dependencies
-
-# Set up cross-compilation environment
-export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
-export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
-export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 
 # Check for OpenBLAS support
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -63,7 +56,24 @@ fi
 
 # Build the project
 echo "Building project..."
-cargo build --release --bin bootstrap --target aarch64-unknown-linux-gnu
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # Use Docker for cross-compilation on macOS
+    echo "Using Docker for cross-compilation..."
+    docker run --rm -v $(pwd):/volume -w /volume \
+        -e OPENBLAS_DIR=$OPENBLAS_DIR \
+        -e OPENBLAS_LIB_DIR=$OPENBLAS_LIB_DIR \
+        messense/rust-musl-cross:aarch64-musl \
+        cargo build --release --bin bootstrap --target aarch64-unknown-linux-gnu
+else
+    # Direct cross-compilation on Linux
+    export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+    export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+    export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
+    export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+    
+    cargo build --release --bin bootstrap --target aarch64-unknown-linux-gnu
+fi
 
 # Copy the binary to the artifacts directory
 echo "Copying binary to artifacts directory..."
