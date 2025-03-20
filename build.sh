@@ -64,10 +64,10 @@ fi
 
 # Build the project using cargo-lambda
 echo "Building project..."
-cargo lambda build --release --arm64 --output-format binary
+cargo lambda build --release --arm64 --bin lambda_handler --output-format binary
 
 # Copy the binary to the artifacts directory
 echo "Copying binary to artifacts directory..."
 mkdir -p artifacts
-cp target/lambda/deep-risk-model/bootstrap artifacts/
+cp target/lambda/lambda_handler/bootstrap artifacts/
 chmod +x artifacts/bootstrap 
