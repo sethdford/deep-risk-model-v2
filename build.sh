@@ -58,13 +58,16 @@ fi
 echo "Building project..."
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # Use Docker for cross-compilation on macOS
-    echo "Using Docker for cross-compilation..."
-    docker run --rm -v $(pwd):/volume -w /volume \
-        -e OPENBLAS_DIR=$OPENBLAS_DIR \
-        -e OPENBLAS_LIB_DIR=$OPENBLAS_LIB_DIR \
-        messense/rust-musl-cross:aarch64-musl \
-        cargo build --release --bin bootstrap --target aarch64-unknown-linux-gnu
+    # Use AWS Lambda base image for cross-compilation on macOS
+    echo "Using AWS Lambda base image for cross-compilation..."
+    docker run --rm -v $(pwd):/code -w /code \
+        -e CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+        -e OPENSSL_DIR=/usr \
+        -e OPENSSL_LIB_DIR=/usr/lib \
+        -e OPENSSL_INCLUDE_DIR=/usr/include \
+        public.ecr.aws/lambda/provided:al2-arm64 \
+        bash -c "yum install -y openssl-devel pkg-config gcc && \
+                cargo build --release --bin bootstrap --target aarch64-unknown-linux-gnu"
 else
     # Direct cross-compilation on Linux
     export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
