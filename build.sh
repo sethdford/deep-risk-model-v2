@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Function to install Rust and required tools
 install_rust() {
@@ -57,73 +58,64 @@ fi
 # Build the project
 echo "Building project..."
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # Create a temporary Dockerfile for the build
-    cat > Dockerfile.build << 'EOF'
-# Stage 1: Build the binary
-FROM public.ecr.aws/lambda/provided:al2-arm64 as builder
+# Create a temporary Dockerfile
+cat > Dockerfile.build << 'EOF'
+FROM amazonlinux:2 as builder
 
 # Install build dependencies
 RUN yum update -y && \
+    yum install -y gcc openssl-devel pkg-config make git && \
     yum groupinstall -y "Development Tools" && \
-    yum install -y openssl-devel pkg-config gcc
+    yum install -y gcc-c++ && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    source $HOME/.cargo/env && \
+    rustup target add aarch64-unknown-linux-gnu
 
-# Install Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+# Install cross-compilation tools
+RUN amazon-linux-extras enable epel && \
+    yum clean metadata && \
+    yum -y install epel-release && \
+    yum install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
 
-# Add target
-RUN rustup target add aarch64-unknown-linux-gnu
+# Set up cross-compilation environment
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+    CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
+    CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++ \
+    AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar \
+    RUSTFLAGS="-C target-feature=+crt-static"
 
-# Create a new empty project
-WORKDIR /build
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
+# Copy the project files
+WORKDIR /usr/src/app
+COPY . .
 
 # Build the project
-RUN cargo build --release --bin bootstrap --target aarch64-unknown-linux-gnu
+RUN source $HOME/.cargo/env && \
+    cargo build --release --bin bootstrap --target aarch64-unknown-linux-gnu
 
-# Stage 2: Create the runtime image
-FROM public.ecr.aws/lambda/provided:al2-arm64
+FROM public.ecr.aws/lambda/provided:al2 as runtime
 
-# Copy the binary
-COPY --from=builder /build/target/aarch64-unknown-linux-gnu/release/bootstrap ${LAMBDA_RUNTIME_DIR}/bootstrap
+# Copy the binary from builder
+COPY --from=builder /usr/src/app/target/aarch64-unknown-linux-gnu/release/bootstrap /var/runtime/bootstrap
 
 # Set permissions
-RUN chmod 755 ${LAMBDA_RUNTIME_DIR}/bootstrap
+RUN chmod +x /var/runtime/bootstrap
 
-# Set the CMD
-CMD ["bootstrap"]
+# Create artifacts directory and copy binary
+RUN mkdir -p /artifacts && \
+    cp /var/runtime/bootstrap /artifacts/
+
 EOF
 
-    # Build using Docker
-    echo "Building with Docker..."
-    docker build -t lambda-rust-builder -f Dockerfile.build .
-    
-    # Extract the binary
-    echo "Extracting binary..."
-    mkdir -p artifacts
-    docker create --name temp lambda-rust-builder
-    docker cp temp:/var/runtime/bootstrap artifacts/
-    docker rm temp
-    docker rmi lambda-rust-builder
-    
-    # Clean up
-    rm Dockerfile.build
-else
-    # Direct cross-compilation on Linux
-    export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-    export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
-    export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
-    export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-    
-    cargo build --release --bin bootstrap --target aarch64-unknown-linux-gnu
-    
-    # Copy the binary to the artifacts directory
-    echo "Copying binary to artifacts directory..."
-    mkdir -p artifacts
-    cp target/aarch64-unknown-linux-gnu/release/bootstrap artifacts/
-fi
+# Build the Docker image
+docker build -t lambda-rust-builder -f Dockerfile.build .
 
-# Ensure the binary is executable
+# Extract the binary
+docker create --name temp lambda-rust-builder
+docker cp temp:/artifacts/bootstrap artifacts/
+docker rm temp
+
+# Clean up
+docker rmi lambda-rust-builder
+
+# Set executable permissions
 chmod +x artifacts/bootstrap 
