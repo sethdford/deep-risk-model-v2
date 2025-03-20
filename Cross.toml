@@ -1,0 +1,14 @@
+[target.aarch64-unknown-linux-gnu]
+image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:latest"
+pre-build = [
+    "apt-get update",
+    "apt-get install -y pkg-config libssl-dev libopenblas-dev"
+]
+
+[build.env]
+passthrough = [
+    "RUST_BACKTRACE",
+    "RUST_LOG",
+    "OPENBLAS_DIR",
+    "OPENBLAS_LIB_DIR"
+] 
