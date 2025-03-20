@@ -26,7 +26,7 @@ tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "json"] }
 
 # Data processing
-ndarray = { version = "0.15.6", features = ["serde", "blas"] }
+ndarray = { version = "0.15.6", features = ["serde"] }
 ndarray-rand = "0.14.0"
 ndarray-stats = "0.5.1"
 rand = "0.8.5"
@@ -34,19 +34,8 @@ rand_distr = "0.4.3"
 rand_chacha = "0.3"
 num-traits = "0.2"
 
-# Linear algebra - choose one of these options:
-# Option 1: Pure Rust implementation (no external dependencies)
-linfa-linalg = { version = "0.1.0", optional = true }
-
-# Option 2: BLAS-based implementation (requires external libraries)
-ndarray-linalg = { version = "0.14.1", optional = true }
-
-# BLAS implementation options
-openblas-src = { version = "0.10.8", optional = true, default-features = false, features = ["cblas"] }
-netlib-src = { version = "0.8", optional = true, features = ["cblas"] }
-intel-mkl-src = { version = "0.5", optional = true }
-accelerate-src = { version = "0.3", optional = true }
-blas-src = { version = "0.8", optional = true }
+# Linear algebra - Pure Rust implementation (no external dependencies)
+linfa-linalg = { version = "0.1.0" }
 
 # Async traits
 async-trait = "0.1"
@@ -75,68 +64,42 @@ sysinfo = "0.29"
 
 # OpenSSL with vendored feature
 openssl = { version = "0.10", features = ["vendored"] }
+openssl-sys = { version = "0.9", features = ["vendored"] }
 
-# GPU dependencies will be added in a future update
-# These dependencies are commented out because they require the CUDA toolkit to be installed
-# Uncomment and update versions as needed when implementing actual GPU support
-# cuda-runtime-sys = { version = "0.3.0-alpha.1", optional = true }
-# cublas-sys = { version = "0.1.0", optional = true }
-# curand-sys = { version = "0.1.0", optional = true }
+[dev-dependencies]
+approx = "0.5.1"
+criterion = "0.5"
 
 [features]
-# Default features - use OpenBLAS by default
-default = ["openblas"]
-
-# Pure Rust implementation (no external dependencies)
-pure-rust = ["linfa-linalg"]
-
-# BLAS implementations (require external libraries)
-openblas = ["ndarray-linalg", "openblas-src", "blas-src/openblas"]
-netlib = ["ndarray-linalg", "netlib-src", "blas-src/netlib"]
-intel-mkl = ["ndarray-linalg", "intel-mkl-src", "blas-src/intel-mkl"]
-accelerate = ["ndarray-linalg", "accelerate-src", "blas-src/accelerate"]
+# Default features - use pure Rust
+default = ["pure-rust"]
+pure-rust = []
 
 # System-specific features
-system = ["openblas-src/system"]
-static = ["openblas-src/static"]
+system = []
+static = []
 
 # Features for conditional compilation
-blas-enabled = []
 gpu = []
-no-blas = ["pure-rust"]
 
-# macOS-specific default features
-[target.'cfg(target_os = "macos")'.dependencies]
-accelerate-src = { version = "0.3", optional = true }
+# Additional features
+blas-enabled = []
+no-blas = []
 
-# Linux-specific dependencies
-[target.'cfg(target_os = "linux")'.dependencies]
-openblas-src = { version = "0.10.8", features = ["cblas", "system"], optional = true }
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
 
-# Windows-specific dependencies
-[target.'cfg(target_os = "windows")'.dependencies]
-openblas-src = { version = "0.10.8", features = ["cblas", "static"], optional = true }
+[profile.dev]
+opt-level = 0
+debug = 2
 
-# Dev dependencies for testing
-[dev-dependencies]
-# Async testing
-tokio-test = "0.4"
-
-# Logging for tests
-test-log = "0.2"
-
-# Benchmarking
-criterion = { version = "0.5", features = ["html_reports"] }
-approx = "0.5"
-
-# Property-based testing
-proptest = "1.3"
-
-# HTTP mocking
-mockito = "1.2"
-
-# Mocking
-mockall = "0.11"
+[lib]
+name = "deep_risk_model"
+path = "src/lib.rs"
 
 [[bin]]
 name = "bootstrap"
@@ -162,29 +125,14 @@ path = "src/bin/lambda/generate_payload.rs"
 name = "run_model_with_test_data"
 path = "src/bin/lambda/run_model_with_test_data.rs"
 
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = true
-
-[profile.dev]
-opt-level = 0
-debug = 2
-
-[lib]
-name = "deep_risk_model"
-path = "src/lib.rs"
-
 # Commented out benches to fix build issues
 # [[bench]]
 # name = "transformer_benchmarks"
 # harness = false
 
-# [[bench]]
-# name = "model_benchmarks"
-# harness = false
+[[bench]]
+name = "model_benchmarks"
+harness = false
 
 [[example]]
 name = "basic_demo"
