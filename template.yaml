@@ -33,18 +33,16 @@ Globals:
   Function:
     Timeout: !FindInMap [EnvironmentConfig, !Ref EnvironmentType, Timeout]
     MemorySize: !FindInMap [EnvironmentConfig, !Ref EnvironmentType, MemorySize]
+    Architectures: 
+      - arm64
 
 Resources:
   DeepRiskModelFunction:
     Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: makefile
     Properties:
-      CodeUri: .
-      Handler: bootstrap
-      Runtime: provided.al2
-      Architectures: 
-        - arm64
+      PackageType: Image
+      ImageConfig:
+        Command: ["lambda.handler"]
       Events:
         ApiEvent:
           Type: Api
@@ -58,6 +56,10 @@ Resources:
           LOG_LEVEL: !FindInMap [EnvironmentConfig, !Ref EnvironmentType, LogLevel]
       Policies:
         - AWSLambdaBasicExecutionRole
+    Metadata:
+      DockerTag: latest
+      DockerContext: .
+      Dockerfile: Dockerfile.lambda
 
 Outputs:
   DeepRiskModelFunction:

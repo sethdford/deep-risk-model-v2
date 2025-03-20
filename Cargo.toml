@@ -26,7 +26,7 @@ tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "json"] }
 
 # Data processing
-ndarray = { version = "0.15.6", features = ["serde"] }
+ndarray = { version = "0.16.1", features = ["serde"] }
 ndarray-rand = "0.14.0"
 ndarray-stats = "0.5.1"
 rand = "0.8.5"
@@ -35,7 +35,7 @@ rand_chacha = "0.3"
 num-traits = "0.2"
 
 # Linear algebra - Pure Rust implementation (no external dependencies)
-linfa-linalg = { version = "0.1.0" }
+linfa-linalg = { version = "0.1.0", optional = true }
 
 # Async traits
 async-trait = "0.1"
@@ -65,26 +65,42 @@ sysinfo = "0.29"
 # OpenSSL with vendored feature
 openssl = { version = "0.10", features = ["vendored"] }
 openssl-sys = { version = "0.9", features = ["vendored"] }
+ndarray-linalg = { version = "0.17.0", optional = true }
+
+# GPU acceleration
+cudarc = { version = "0.9.14", optional = true }
+candle-core = { version = "0.3.1", optional = true }
 
 [dev-dependencies]
 approx = "0.5.1"
 criterion = "0.5"
 
 [features]
-# Default features - use pure Rust
-default = ["pure-rust"]
-pure-rust = []
+# Default features
+default = ["blas-enabled"]
 
 # System-specific features
 system = []
 static = []
 
 # Features for conditional compilation
-gpu = []
+gpu = ["dep:cudarc", "dep:candle-core"]
+
+# BLAS features - using openblas-static for Lambda compatibility
+blas-enabled = ["ndarray-linalg"]
+pure-rust = ["linfa-linalg"]
+no-blas = []
 
 # Additional features
-blas-enabled = []
-no-blas = []
+openblas-static = ["ndarray-linalg", "ndarray-linalg/openblas-static"]
+openblas-system = ["ndarray-linalg", "ndarray-linalg/openblas-system"]
+netlib-static = ["ndarray-linalg", "ndarray-linalg/netlib-static"]
+netlib-system = ["ndarray-linalg", "ndarray-linalg/netlib-system"]
+intel-mkl-static = ["ndarray-linalg", "ndarray-linalg/intel-mkl-static"]
+intel-mkl-system = ["ndarray-linalg", "ndarray-linalg/intel-mkl-system"]
+
+linfa-linalg = ["dep:linfa-linalg"]
+ndarray-linalg = ["dep:ndarray-linalg"]
 
 [profile.release]
 opt-level = 3

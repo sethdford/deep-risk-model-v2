@@ -4,7 +4,7 @@ use deep_risk_model::prelude::{
     DeepRiskModel,
 };
 use ndarray::Array2;
-use ndarray_rand::{RandomExt, rand_distr::Normal};
+use deep_risk_model::core::random::random_normal;
 use rand::Rng;
 use tracing_subscriber;
 
@@ -54,12 +54,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Generate correlated returns data
     let mut rng = rand::thread_rng();
-    let common_factor = Array2::<f32>::random((n_samples, 1), Normal::new(0.0, 0.05).unwrap());
+    let common_factor = random_normal((n_samples, 1), 0.0, 0.05).unwrap();
     
     // Create returns with common factor to ensure factors can be extracted
     let mut returns = Array2::<f32>::zeros((n_samples, n_assets));
     for i in 0..n_assets {
-        let asset_specific = Array2::<f32>::random((n_samples, 1), Normal::new(0.0, 0.02).unwrap());
+        let asset_specific = random_normal((n_samples, 1), 0.0, 0.02).unwrap();
         let factor_loading = 0.3 + 0.7 * rng.gen::<f32>(); // Random loading between 0.3 and 1.0
         
         for j in 0..n_samples {
@@ -68,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     // Generate features data with twice the number of columns as n_assets
-    let features = Array2::<f32>::random((n_samples, n_assets * 2), Normal::new(0.0, 1.0).unwrap());
+    let features = random_normal((n_samples, n_assets * 2), 0.0, 1.0).unwrap();
     
     let market_data = MarketData::new(returns, features);
     

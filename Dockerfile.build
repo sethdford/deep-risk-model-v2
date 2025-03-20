@@ -1,58 +1,48 @@
-FROM public.ecr.aws/lambda/provided:al2-arm64 as builder
+# Build stage
+FROM rust:latest
 
-# Install Rust and other dependencies
-RUN yum clean all && \
-    yum update -y && \
-    yum install -y gcc cmake make curl tar gzip
+# Install build dependencies and cross-compilation tools
+RUN dpkg --add-architecture arm64 && \
+    apt-get update && \
+    apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    libssl-dev \
+    pkg-config \
+    gfortran \
+    crossbuild-essential-arm64 \
+    libgfortran5 \
+    libgfortran-dev \
+    libc6-dev:arm64 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install OpenSSL development libraries
-RUN yum install -y openssl-devel
-
-# Install OpenBLAS
-RUN yum install -y openblas-devel
-
-# Install Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
-
-# Add the target
+# Install Rust and add ARM64 target
 RUN rustup target add aarch64-unknown-linux-gnu
 
-# Create a new empty project
-WORKDIR /build
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
-COPY events ./events
+# Set up environment variables
+ENV PATH="/usr/local/cargo/bin:${PATH}" \
+    OPENBLAS_LIB_DIR=/usr/lib/aarch64-linux-gnu \
+    OPENBLAS_INCLUDE_DIR=/usr/include \
+    LIBRARY_PATH=/usr/lib/aarch64-linux-gnu \
+    RUSTFLAGS="-C target-feature=+crt-static" \
+    CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
+    CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++ \
+    AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar \
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 
-# Create necessary directories 
-RUN mkdir -p examples tests
+WORKDIR /usr/src/app
 
-# Ensure we have all required source files
-COPY examples ./examples
-COPY tests ./tests
+# Copy the source code
+COPY . .
 
 # Build the project
-RUN if [ -f /usr/lib64/libopenblas.a ]; then \
-      echo "Building with OpenBLAS support"; \
-      export RUSTFLAGS="-C target-feature=+crt-static -L /usr/lib64 -l static=openblas"; \
-    else \
-      echo "Building without OpenBLAS support"; \
-      export RUSTFLAGS="-C target-feature=+crt-static"; \
-    fi && \
-    cargo build --release --bin bootstrap --target aarch64-unknown-linux-gnu
+RUN cargo build --release --bin bootstrap --target aarch64-unknown-linux-gnu
 
-# Verify the binary exists and has the right permissions
-RUN ls -la /build/target/aarch64-unknown-linux-gnu/release/bootstrap && \
-    chmod +x /build/target/aarch64-unknown-linux-gnu/release/bootstrap
+# Runtime stage
+FROM public.ecr.aws/lambda/provided:al2
+COPY --from=0 /usr/src/app/target/aarch64-unknown-linux-gnu/release/bootstrap /var/runtime/bootstrap
 
-# Copy the bootstrap binary to the Lambda runtime directory
-FROM public.ecr.aws/lambda/provided:al2-arm64
+# Set the CMD to your handler
+ENTRYPOINT [ "/var/runtime/bootstrap" ]
 
-# Copy the bootstrap binary
-COPY --from=builder /build/target/aarch64-unknown-linux-gnu/release/bootstrap ${LAMBDA_RUNTIME_DIR}/bootstrap
-
-# Set the correct permissions for the bootstrap file
-RUN chmod 755 ${LAMBDA_RUNTIME_DIR}/bootstrap
-
-# Set the CMD to the handler
-CMD ["bootstrap"] 

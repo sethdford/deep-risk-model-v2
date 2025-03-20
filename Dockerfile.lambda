@@ -1,0 +1,47 @@
+FROM rust:slim AS builder
+
+WORKDIR /usr/src/app
+
+# Install dependencies for OpenBLAS build and cross-compilation
+RUN apt-get update && \
+    apt-get install -y \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    gfortran \
+    cmake \
+    wget \
+    gcc-aarch64-linux-gnu \
+    g++-aarch64-linux-gnu \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the source code
+COPY . .
+
+# Add ARM64 target
+RUN rustup target add aarch64-unknown-linux-gnu
+
+# Set cross-compilation environment variables
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+ENV CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+ENV CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+ENV RUSTFLAGS="-C target-feature=+crt-static"
+ENV OPENBLAS_STATIC=1 
+ENV OPENBLAS_TARGET=aarch64
+ENV TARGET_ARCH=aarch64
+ENV CARGO_PROFILE_RELEASE_LTO=true
+
+# Build with OpenBLAS static linking
+RUN cargo build --release --bin bootstrap --features blas-enabled --target aarch64-unknown-linux-gnu
+
+# Create the runtime container
+FROM public.ecr.aws/lambda/provided:al2-arm64
+
+# Copy the compiled binary
+COPY --from=builder /usr/src/app/target/aarch64-unknown-linux-gnu/release/bootstrap ${LAMBDA_RUNTIME_DIR}/bootstrap
+
+# Set permissions
+RUN chmod +x ${LAMBDA_RUNTIME_DIR}/bootstrap
+
+# Set the CMD to the handler
+CMD ["bootstrap"] 

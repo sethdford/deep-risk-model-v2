@@ -19,7 +19,7 @@ region = "us-east-1"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
 parameter_overrides = "EnvironmentType=dev"
-image_repositories = []
+image_repositories = ["DeepRiskModelFunction=ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/deep-risk-lambda"]
 
 [dev]
 [dev.deploy]
@@ -31,7 +31,7 @@ region = "us-east-1"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
 parameter_overrides = "EnvironmentType=dev"
-image_repositories = []
+image_repositories = ["DeepRiskModelFunction=ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/deep-risk-lambda"]
 
 [staging]
 [staging.deploy]
@@ -43,7 +43,7 @@ region = "us-east-1"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
 parameter_overrides = "EnvironmentType=staging"
-image_repositories = []
+image_repositories = ["DeepRiskModelFunction=ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/deep-risk-lambda"]
 
 [prod]
 [prod.deploy]
@@ -55,4 +55,4 @@ region = "us-east-1"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
 parameter_overrides = "EnvironmentType=prod"
-image_repositories = [] 
+image_repositories = ["DeepRiskModelFunction=ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/deep-risk-lambda"] 

@@ -1,12 +1,12 @@
 use deep_risk_model::prelude::{
-    TransformerRiskModel, RiskModel, MarketData, 
+    TransformerRiskModel, MarketData, 
     MemoryConfig, SparseTensor, ChunkedProcessor, GradientCheckpointer, MemoryPool
 };
-use ndarray::{Array2, Array};
-use ndarray_rand::RandomExt;
-use ndarray_rand::rand_distr::Uniform;
+use ndarray::Array2;
 use std::time::Instant;
-use std::path::Path;
+use deep_risk_model::core::random::random_uniform;
+use deep_risk_model::error::ModelError;
+use rand;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -35,8 +35,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  n_samples = {}", n_samples);
     println!("  n_assets = {}", n_assets);
     
-    let features = Array::random((n_samples, n_assets), Uniform::new(-1.0, 1.0));
-    let returns = Array::random((n_samples, n_assets), Uniform::new(-0.05, 0.05));
+    let features = random_uniform((n_samples, n_assets), -1.0, 1.0);
+    let returns = random_uniform((n_samples, n_assets), -0.05, 0.05);
     let market_data = MarketData::new(returns, features);
     
     // 1. Sparse Tensor Example
@@ -160,7 +160,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Create a smaller dataset for this example
     let small_samples = 1000;
-    let small_features = Array::random((small_samples, n_assets), Uniform::new(-1.0, 1.0));
+    let small_features = random_uniform((small_samples, n_assets), -1.0, 1.0);
     
     println!("  Processing sequence with {} samples", small_samples);
     println!("  Using {} checkpoint segments", checkpoint_config.checkpoint_segments);
