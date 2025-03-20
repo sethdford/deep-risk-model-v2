@@ -8,9 +8,14 @@ install_rust() {
         source "$HOME/.cargo/env"
     fi
 
-    # Install cross
-    echo "Installing cross..."
-    cargo install cross
+    # Install cargo-lambda
+    echo "Installing cargo-lambda..."
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        brew tap cargo-lambda/cargo-lambda
+        brew install cargo-lambda
+    else
+        curl -sSf https://get.cargo-lambda.dev/latest/cargo-lambda-installer.sh | bash
+    fi
 
     # Add required target
     echo "Adding required Rust target..."
@@ -22,27 +27,12 @@ install_dependencies() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         # macOS dependencies
         echo "Installing macOS dependencies..."
-        brew install openssl@3 openblas docker
-        # Start Docker if not running
-        if ! docker info > /dev/null 2>&1; then
-            echo "Starting Docker..."
-            open -a Docker
-            # Wait for Docker to start
-            while ! docker info > /dev/null 2>&1; do
-                echo "Waiting for Docker to start..."
-                sleep 1
-            done
-        fi
+        brew install openssl@3 openblas
     else
         # Linux dependencies
         echo "Installing Linux dependencies..."
         sudo apt-get update
-        sudo apt-get install -y build-essential pkg-config libssl-dev libopenblas-dev docker.io
-        # Start Docker if not running
-        if ! systemctl is-active --quiet docker; then
-            echo "Starting Docker..."
-            sudo systemctl start docker
-        fi
+        sudo apt-get install -y build-essential pkg-config libssl-dev libopenblas-dev
     fi
 }
 
@@ -72,12 +62,12 @@ else
     fi
 fi
 
-# Build the project using cross
+# Build the project using cargo-lambda
 echo "Building project..."
-cross build --release --target aarch64-unknown-linux-gnu --bin bootstrap
+cargo lambda build --release --arm64 --output-format binary
 
 # Copy the binary to the artifacts directory
 echo "Copying binary to artifacts directory..."
 mkdir -p artifacts
-cp target/aarch64-unknown-linux-gnu/release/bootstrap artifacts/
+cp target/lambda/deep-risk-model/bootstrap artifacts/
 chmod +x artifacts/bootstrap 
