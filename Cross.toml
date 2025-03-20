@@ -1,9 +1,5 @@
 [target.aarch64-unknown-linux-gnu]
-image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:latest"
-pre-build = [
-    "apt-get update",
-    "apt-get install -y pkg-config libssl-dev libopenblas-dev"
-]
+image = "messense/rust-musl-cross:aarch64-musl"
 
 [build.env]
 passthrough = [
