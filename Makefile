@@ -43,7 +43,5 @@ build-DeepRiskModelFunction:
 	mkdir -p $(ARTIFACTS_DIR)
 	cp -r . $(ARTIFACTS_DIR)
 	cd $(ARTIFACTS_DIR) && \
-	docker build -t deep-risk-model-builder -f Dockerfile.build . && \
-	docker create --name temp-builder deep-risk-model-builder && \
-	docker cp temp-builder:${LAMBDA_RUNTIME_DIR}/bootstrap bootstrap && \
-	docker rm temp-builder 
+	chmod +x build.sh && \
+	./build.sh 
